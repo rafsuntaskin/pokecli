@@ -1,4 +1,4 @@
-export type AgentKind = "claude" | "codex" | "custom";
+export type AgentKind = "claude" | "codex";
 export type ProjectConfig = {
     version: 1;
     projectRoot: string;
