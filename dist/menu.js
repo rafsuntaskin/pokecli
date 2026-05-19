@@ -1,8 +1,7 @@
 import { readConfig, updateConfig } from "./config.js";
 import { cancelAction, listActions, listRules, logEvent, openDb, setRuleEnabled, } from "./db.js";
 import { formatDuration } from "./duration.js";
-import { attachSession, sessionExists, startSession } from "./tmux.js";
-import { runWatcher } from "./watcher.js";
+import { attachSession, sessionExists, startSession, startWatcherWindow } from "./tmux.js";
 import { askSelect } from "./prompt.js";
 export async function runProjectMenu(projectRoot) {
     const config = readConfig(projectRoot);
@@ -22,7 +21,7 @@ export async function runProjectMenu(projectRoot) {
         message: "What do you want to do?",
         choices: [
             { name: sessionLabel, value: "session" },
-            { name: "Start watcher", value: "watch" },
+            { name: "Restart watcher", value: "watch" },
             { name: automationLabel, value: "toggle-automation" },
             { name: "Exit", value: "exit" },
         ],
@@ -36,8 +35,15 @@ export async function runProjectMenu(projectRoot) {
             attachSession(readConfig(projectRoot));
         }
     }
-    if (choice === "watch")
-        await runWatcher(projectRoot);
+    if (choice === "watch") {
+        if (!running) {
+            console.log("Session is not running. Start it first.");
+        }
+        else {
+            startWatcherWindow(readConfig(projectRoot));
+            console.log("Watcher restarted.");
+        }
+    }
     if (choice === "toggle-automation")
         setAutomation(projectRoot, !config.automationPaused);
 }

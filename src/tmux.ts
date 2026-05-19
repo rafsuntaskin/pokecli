@@ -16,6 +16,10 @@ export function sessionExists(config: ProjectConfig): boolean {
   return result.status === 0;
 }
 
+function agentTarget(config: ProjectConfig): string {
+  return `${config.tmuxTarget}:0`;
+}
+
 export function startSession(config: ProjectConfig): void {
   assertTmuxAvailable();
 
@@ -29,6 +33,8 @@ export function startSession(config: ProjectConfig): void {
     "-d",
     "-s",
     config.tmuxTarget,
+    "-n",
+    "agent",
     "-c",
     config.projectRoot,
     config.command,
@@ -36,6 +42,27 @@ export function startSession(config: ProjectConfig): void {
 
   if (!sessionExists(config)) {
     throw new Error("tmux did not create the session. Check tmux socket permissions and try again.");
+  }
+
+  startWatcherWindow(config);
+}
+
+export function startWatcherWindow(config: ProjectConfig): void {
+  spawnSync("tmux", [...socketArgs(config), "kill-window", "-t", `${config.tmuxTarget}:1`], { stdio: "ignore" });
+  const result = spawnSync("tmux", [
+    ...socketArgs(config),
+    "new-window",
+    "-d",
+    "-n",
+    "watcher",
+    "-c",
+    config.projectRoot,
+    "-t",
+    `${config.tmuxTarget}:1`,
+    "poke run",
+  ], { stdio: "ignore" });
+  if (result.status !== 0) {
+    console.warn("Warning: watcher window did not start. Auto-resume is inactive until this is fixed.");
   }
 }
 
@@ -56,7 +83,7 @@ export function sendKeys(config: ProjectConfig, text: string): void {
     throw new Error(`Session is not running. Start it with "poke start".`);
   }
 
-  execFileSync("tmux", [...socketArgs(config), "send-keys", "-t", config.tmuxTarget, text, "Enter"]);
+  execFileSync("tmux", [...socketArgs(config), "send-keys", "-t", agentTarget(config), text, "Enter"]);
 }
 
 export function capturePane(config: ProjectConfig, lines = 200): string {
@@ -70,7 +97,7 @@ export function capturePane(config: ProjectConfig, lines = 200): string {
     ...socketArgs(config),
     "capture-pane",
     "-t",
-    config.tmuxTarget,
+    agentTarget(config),
     "-p",
     "-S",
     `-${lines}`,
@@ -82,10 +109,10 @@ export function displayMessage(config: ProjectConfig, message: string, durationM
   if (list.status !== 0) return;
   const clients = list.stdout.split("\n").filter(Boolean);
   for (const client of clients) {
-    const args = [...socketArgs(config), "display-message", "-d", String(durationMs), "-c", client, "-t", config.tmuxTarget, message];
+    const args = [...socketArgs(config), "display-message", "-d", String(durationMs), "-c", client, "-t", agentTarget(config), message];
     const result = spawnSync("tmux", args, { stdio: "ignore" });
     if (result.status !== 0) {
-      spawnSync("tmux", [...socketArgs(config), "display-message", "-c", client, "-t", config.tmuxTarget, message], { stdio: "ignore" });
+      spawnSync("tmux", [...socketArgs(config), "display-message", "-c", client, "-t", agentTarget(config), message], { stdio: "ignore" });
     }
   }
 }
