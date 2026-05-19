@@ -48,7 +48,7 @@ cd /path/to/project
 poke
 ```
 
-On first run, PokeCLI asks which agent to start and whether to enable the auto-resume-on-limit template.
+On first run, PokeCLI asks which agent to start and whether to enable the auto-resume-on-limit template. When enabled, the watcher reads the reset time directly from the agent's limit message (e.g. "try again at 3pm", "in 47 minutes") and schedules the resume at that local time. If no time can be parsed, the configured fallback delay (default 30m) is used instead.
 
 ## Common Commands
 
