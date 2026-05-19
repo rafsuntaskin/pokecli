@@ -93,15 +93,11 @@ export function capturePane(config: ProjectConfig, lines = 200): string {
     throw new Error(`Session is not running. Start it with "poke start".`);
   }
 
-  return execFileSync("tmux", [
-    ...socketArgs(config),
-    "capture-pane",
-    "-t",
-    agentTarget(config),
-    "-p",
-    "-S",
-    `-${lines}`,
-  ], { encoding: "utf8" });
+  const args = [...socketArgs(config), "capture-pane", "-t", agentTarget(config), "-p"];
+  if (lines > 0) {
+    args.push("-S", `-${lines}`);
+  }
+  return execFileSync("tmux", args, { encoding: "utf8" });
 }
 
 export function displayMessage(config: ProjectConfig, message: string, durationMs = 5000): void {

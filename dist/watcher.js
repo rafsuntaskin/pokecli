@@ -16,7 +16,7 @@ export async function runWatcher(projectRoot, options = {}) {
                 logEvent(db, "error", "Configured tmux session is not running", { target: config.tmuxTarget });
             }
             else {
-                const output = capturePane(config);
+                const output = capturePane(config, 0);
                 for (const rule of listRules(db, true)) {
                     const scheduled = evaluateRule(db, rule, output);
                     if (scheduled) {
@@ -47,7 +47,7 @@ export async function runWatcher(projectRoot, options = {}) {
                         continue;
                     }
                     if (rule.require_still_visible) {
-                        const output = capturePane(latestConfig);
+                        const output = capturePane(latestConfig, 0);
                         if (!findMatch(rule, output)) {
                             markActionSkipped(db, action.id, "prompt no longer visible");
                             logEvent(db, "action_skipped", "Skipped due action because prompt is no longer visible", { actionId: action.id });

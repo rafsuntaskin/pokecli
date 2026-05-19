@@ -73,15 +73,11 @@ export function capturePane(config, lines = 200) {
     if (!sessionExists(config)) {
         throw new Error(`Session is not running. Start it with "poke start".`);
     }
-    return execFileSync("tmux", [
-        ...socketArgs(config),
-        "capture-pane",
-        "-t",
-        agentTarget(config),
-        "-p",
-        "-S",
-        `-${lines}`,
-    ], { encoding: "utf8" });
+    const args = [...socketArgs(config), "capture-pane", "-t", agentTarget(config), "-p"];
+    if (lines > 0) {
+        args.push("-S", `-${lines}`);
+    }
+    return execFileSync("tmux", args, { encoding: "utf8" });
 }
 export function displayMessage(config, message, durationMs = 5000) {
     const list = spawnSync("tmux", [...socketArgs(config), "list-clients", "-t", config.tmuxTarget, "-F", "#{client_name}"], { encoding: "utf8" });
