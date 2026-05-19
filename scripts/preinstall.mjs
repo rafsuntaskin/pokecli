@@ -25,7 +25,9 @@ if (!isTmuxAvailable()) {
     : "See https://github.com/tmux/tmux/wiki/Installing";
 
   console.warn("");
-  console.warn("PokeCLI installed, but tmux was not found on PATH.");
-  console.warn(`tmux is required to run poke. ${install}`);
+  console.warn("Heads up: tmux was not found on PATH.");
+  console.warn(`PokeCLI requires tmux to run. ${install}`);
   console.warn("");
 }
+
+process.exit(0);

@@ -17,7 +17,7 @@
     "build": "tsc && node scripts/chmod-bin.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test --test-reporter=spec tests/*.test.ts",
-    "postinstall": "node scripts/postinstall.mjs"
+    "preinstall": "node scripts/preinstall.mjs"
   },
   "keywords": [
     "cli",
