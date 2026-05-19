@@ -3,9 +3,13 @@ import { openDb, createRule, logEvent } from "./db.js";
 import { parseDuration } from "./duration.js";
 import { createTmuxTarget, ensurePokeDir } from "./paths.js";
 import { assertTmuxAvailable, attachSession, startSession } from "./tmux.js";
-import type { AgentKind, MatchType, ProjectConfig, RuleInput } from "./types.js";
+import type { AgentKind, ProjectConfig, RuleInput } from "./types.js";
 import { claudeAutoResumeRule, codexAutoResumeRule } from "./rules.js";
 import { askConfirm, askInput, askSelect } from "./prompt.js";
+
+const FALLBACK_DELAY_SECONDS = parseDuration("30m");
+const DEDUPE_SECONDS = parseDuration("90m");
+const DEFAULT_RESPONSE = "continue";
 
 export async function runFirstSetup(projectRoot: string): Promise<void> {
   console.log("Welcome to PokeCLI\n");
@@ -55,8 +59,8 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
     default: true,
   });
 
-  if (enableAutoResume) {
-    const rule = await buildAutoResumeRule(agent);
+  const rule = enableAutoResume ? buildAutoResumeRule(agent) : null;
+  if (rule) {
     createRule(db, rule);
     logEvent(db, "setup_completed", "Initial setup completed with auto-resume rule", {
       agent,
@@ -64,6 +68,9 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
       ruleName: rule.name,
     });
   } else {
+    if (enableAutoResume) {
+      console.log("Auto-resume is only available for Claude or Codex; skipping rule setup. Add a custom rule with `poke rule add`.");
+    }
     logEvent(db, "setup_completed", "Initial setup completed without automation", { agent, command });
   }
 
@@ -82,78 +89,12 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
   db.close();
 }
 
-async function buildAutoResumeRule(agent: AgentKind): Promise<RuleInput> {
-  const delay = await askInput({
-    message: "Fallback delay (used when no expiry time is parsed from the limit message)",
-    default: "30m",
-    validate: validateDuration,
-  });
-  const response = await askInput({
-    message: "Response to send",
-    default: "continue",
-    required: true,
-  });
-  const dedupe = await askInput({
-    message: "Dedupe window",
-    default: "90m",
-    validate: validateDuration,
-  });
-
+function buildAutoResumeRule(agent: AgentKind): RuleInput | null {
   if (agent === "claude") {
-    const base = claudeAutoResumeRule(parseDuration(delay), response, parseDuration(dedupe));
-    return maybeCustomizeRule(base);
+    return claudeAutoResumeRule(FALLBACK_DELAY_SECONDS, DEFAULT_RESPONSE, DEDUPE_SECONDS);
   }
-
   if (agent === "codex") {
-    const base = codexAutoResumeRule(parseDuration(delay), response, parseDuration(dedupe));
-    return maybeCustomizeRule(base);
+    return codexAutoResumeRule(FALLBACK_DELAY_SECONDS, DEFAULT_RESPONSE, DEDUPE_SECONDS);
   }
-
-  const matchType = await askSelect<MatchType>({
-    message: "Match type:",
-    choices: [
-      { name: "Contains text", value: "contains" },
-      { name: "Regex", value: "regex" },
-    ],
-  });
-  const matchValue = await askInput({
-    message: matchType === "contains" ? "Text to watch for" : "Regex to watch for",
-    required: true,
-  });
-
-  return {
-    name: "auto-resume-limit",
-    matchType,
-    matchValue,
-    response,
-    delaySeconds: parseDuration(delay),
-    dedupeSeconds: parseDuration(dedupe),
-    requireStillVisible: true,
-  };
-}
-
-async function maybeCustomizeRule(rule: RuleInput): Promise<RuleInput> {
-  const customize = await askConfirm({
-    message: "Customize the default match pattern?",
-    default: false,
-  });
-
-  if (!customize) return rule;
-
-  const matchValue = await askInput({
-    message: "Regex to watch for",
-    default: rule.matchValue,
-    required: true,
-  });
-
-  return { ...rule, matchValue };
-}
-
-function validateDuration(value: string): true | string {
-  try {
-    parseDuration(value);
-    return true;
-  } catch (error) {
-    return error instanceof Error ? error.message : "Invalid duration.";
-  }
+  return null;
 }
