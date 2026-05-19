@@ -93,7 +93,7 @@ export function claudeAutoResumeRule(delaySeconds: number, response: string, ded
   return {
     name: "auto-resume-limit",
     matchType: "regex" as const,
-    matchValue: "(?i)(limit|usage|rate).*(try again|resume|continue|later)",
+    matchValue: "(?i)(limit|usage|rate).*(try again|resume|retry|continue|later|reset(?:s|ting)?)",
     response,
     delaySeconds,
     dedupeSeconds,
@@ -106,7 +106,7 @@ export function codexAutoResumeRule(delaySeconds: number, response: string, dedu
   return {
     name: "auto-resume-limit",
     matchType: "regex" as const,
-    matchValue: "(?i)(limit|usage|rate|quota).*(try again|retry|continue|later)",
+    matchValue: "(?i)(limit|usage|rate|quota).*(try again|retry|resume|continue|later|reset(?:s|ting)?)",
     response,
     delaySeconds,
     dedupeSeconds,
