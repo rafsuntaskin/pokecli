@@ -34,12 +34,15 @@ Before sending, it re-checks that the limit prompt is still on screen — so if 
 ## Install
 
 ```bash
-npm install -g github:rafsuntaskin/pokecli
+npm install -g https://github.com/rafsuntaskin/pokecli/releases/download/v0.1.0/pokecli-0.1.0.tgz
 ```
 
-Or with SSH:
+Replace `v0.1.0` and `0.1.0` with the latest release version.
+
+Git-based installs also work, but the release tarball is preferred because it installs the already-built package without npm's git clone and link step:
 
 ```bash
+npm install -g github:rafsuntaskin/pokecli
 npm install -g git+ssh://git@github.com/rafsuntaskin/pokecli.git
 ```
 
@@ -51,6 +54,23 @@ cd pokecli
 npm install
 npm run build
 npm link
+```
+
+## Release
+
+To ship a GitHub release tarball:
+
+```bash
+npm version patch
+git push --follow-tags
+```
+
+Pushing a `v*` tag runs the release workflow. It installs dependencies, typechecks, tests, builds `dist/`, creates `pokecli-<version>.tgz` with `npm pack`, and attaches the tarball to the matching GitHub release.
+
+To create a tarball locally without publishing a release:
+
+```bash
+npm run pack:release
 ```
 
 ## Quickstart
