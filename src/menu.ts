@@ -8,7 +8,7 @@ import {
   setRuleEnabled,
 } from "./db.js";
 import { formatDuration } from "./duration.js";
-import { attachSession, sessionExists, startSession, startWatcherWindow } from "./tmux.js";
+import { attachSession, sessionExists, setScheduledPaneTitle, startSession, startWatcherWindow } from "./tmux.js";
 
 export async function runProjectMenu(projectRoot: string): Promise<void> {
   const config = readConfig(projectRoot);
@@ -78,9 +78,12 @@ export function printActions(projectRoot: string, pendingOnly: boolean): void {
 }
 
 export function cancelPendingAction(projectRoot: string, id: string): void {
+  const config = readConfig(projectRoot);
   const db = openDb(projectRoot);
   cancelAction(db, id);
   logEvent(db, "action_cancelled", "Action cancelled", { actionId: id });
+  const nextAction = listActions(db, true)[0];
+  setScheduledPaneTitle(config, nextAction ? formatTitleTime(new Date(nextAction.run_at)) : null);
   db.close();
   console.log(`Cancelled action: ${id}`);
 }
@@ -97,4 +100,13 @@ export function setRuleState(projectRoot: string, ruleId: string, enabled: boole
   const db = openDb(projectRoot);
   setRuleEnabled(db, ruleId, enabled);
   db.close();
+}
+
+function formatTitleTime(date: Date): string {
+  return date.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

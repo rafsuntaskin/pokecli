@@ -1,7 +1,7 @@
 import { readConfig } from "./config.js";
-import { getRule, listDueActions, listRules, logEvent, markActionExecuted, markActionFailed, markActionSkipped, openDb, } from "./db.js";
+import { getRule, listActions, listDueActions, listRules, logEvent, markActionExecuted, markActionFailed, markActionSkipped, openDb, } from "./db.js";
 import { findMatch, evaluateRule } from "./rules.js";
-import { capturePane, displayMessage, sendKeys, sessionExists } from "./tmux.js";
+import { capturePane, displayMessage, sendKeys, sessionExists, setScheduledPaneTitle } from "./tmux.js";
 export async function runWatcher(projectRoot, options = {}) {
     const config = readConfig(projectRoot);
     const db = openDb(projectRoot);
@@ -76,6 +76,7 @@ export async function runWatcher(projectRoot, options = {}) {
                     logEvent(db, "action_failed", message, { actionId: action.id });
                 }
             }
+            syncScheduledPaneTitle(config, listActions(db, true));
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -98,6 +99,18 @@ function sleep(ms) {
 function formatLocal(date) {
     return date.toLocaleString(undefined, {
         weekday: "short",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
+}
+function syncScheduledPaneTitle(config, pendingActions) {
+    const nextAction = pendingActions[0];
+    setScheduledPaneTitle(config, nextAction ? formatTitleTime(new Date(nextAction.run_at)) : null);
+}
+function formatTitleTime(date) {
+    return date.toLocaleString(undefined, {
         month: "short",
         day: "numeric",
         hour: "numeric",

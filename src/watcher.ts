@@ -1,6 +1,7 @@
 import { readConfig } from "./config.js";
 import {
   getRule,
+  listActions,
   listDueActions,
   listRules,
   logEvent,
@@ -10,7 +11,8 @@ import {
   openDb,
 } from "./db.js";
 import { findMatch, evaluateRule } from "./rules.js";
-import { capturePane, displayMessage, sendKeys, sessionExists } from "./tmux.js";
+import { capturePane, displayMessage, sendKeys, sessionExists, setScheduledPaneTitle } from "./tmux.js";
+import type { ProjectConfig, ScheduledAction } from "./types.js";
 
 export async function runWatcher(projectRoot: string, options: { once?: boolean } = {}): Promise<void> {
   const config = readConfig(projectRoot);
@@ -92,6 +94,8 @@ export async function runWatcher(projectRoot: string, options: { once?: boolean 
           logEvent(db, "action_failed", message, { actionId: action.id });
         }
       }
+
+      syncScheduledPaneTitle(config, listActions(db, true));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logEvent(db, "error", message);
@@ -116,6 +120,20 @@ function sleep(ms: number): Promise<void> {
 function formatLocal(date: Date): string {
   return date.toLocaleString(undefined, {
     weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function syncScheduledPaneTitle(config: ProjectConfig, pendingActions: ScheduledAction[]): void {
+  const nextAction = pendingActions[0];
+  setScheduledPaneTitle(config, nextAction ? formatTitleTime(new Date(nextAction.run_at)) : null);
+}
+
+function formatTitleTime(date: Date): string {
+  return date.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
     hour: "numeric",

@@ -1,7 +1,7 @@
 import { readConfig, updateConfig } from "./config.js";
 import { cancelAction, listActions, listRules, logEvent, openDb, setRuleEnabled, } from "./db.js";
 import { formatDuration } from "./duration.js";
-import { attachSession, sessionExists, startSession, startWatcherWindow } from "./tmux.js";
+import { attachSession, sessionExists, setScheduledPaneTitle, startSession, startWatcherWindow } from "./tmux.js";
 export async function runProjectMenu(projectRoot) {
     const config = readConfig(projectRoot);
     if (!sessionExists(config)) {
@@ -61,9 +61,12 @@ export function printActions(projectRoot, pendingOnly) {
     db.close();
 }
 export function cancelPendingAction(projectRoot, id) {
+    const config = readConfig(projectRoot);
     const db = openDb(projectRoot);
     cancelAction(db, id);
     logEvent(db, "action_cancelled", "Action cancelled", { actionId: id });
+    const nextAction = listActions(db, true)[0];
+    setScheduledPaneTitle(config, nextAction ? formatTitleTime(new Date(nextAction.run_at)) : null);
     db.close();
     console.log(`Cancelled action: ${id}`);
 }
@@ -78,5 +81,13 @@ export function setRuleState(projectRoot, ruleId, enabled) {
     const db = openDb(projectRoot);
     setRuleEnabled(db, ruleId, enabled);
     db.close();
+}
+function formatTitleTime(date) {
+    return date.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+    });
 }
 //# sourceMappingURL=menu.js.map

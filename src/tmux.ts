@@ -44,6 +44,8 @@ export function startSession(config: ProjectConfig): void {
     throw new Error("tmux did not create the session. Check tmux socket permissions and try again.");
   }
 
+  spawnSync("tmux", [...socketArgs(config), "set-option", "-t", config.tmuxTarget, "display-time", "5000"], { stdio: "ignore" });
+
   startWatcherWindow(config);
 }
 
@@ -113,6 +115,53 @@ export function displayMessage(config: ProjectConfig, message: string, durationM
   }
 }
 
+export function setScheduledPaneTitle(config: ProjectConfig, scheduledAt: string | null): void {
+  if (!sessionExists(config)) return;
+
+  const target = agentTarget(config);
+  const titleActive = showPaneOption(config, "@poke_title_active") === "1";
+  const originalTitle = titleActive ? showPaneOption(config, "@poke_original_pane_title") : currentPaneTitle(config);
+
+  if (scheduledAt) {
+    if (!titleActive) {
+      setPaneOption(config, "@poke_original_pane_title", originalTitle);
+      setPaneOption(config, "@poke_title_active", "1");
+    }
+
+    const title = originalTitle
+      ? `poke scheduled at ${scheduledAt} | ${originalTitle}`
+      : `poke scheduled at ${scheduledAt}`;
+    spawnSync("tmux", [...socketArgs(config), "select-pane", "-t", target, "-T", title], { stdio: "ignore" });
+    return;
+  }
+
+  if (titleActive) {
+    spawnSync("tmux", [...socketArgs(config), "select-pane", "-t", target, "-T", originalTitle], { stdio: "ignore" });
+    unsetPaneOption(config, "@poke_original_pane_title");
+    unsetPaneOption(config, "@poke_title_active");
+  }
+}
+
 function socketArgs(config: ProjectConfig): string[] {
   return ["-S", getTmuxSocketPath(config.projectRoot)];
+}
+
+function currentPaneTitle(config: ProjectConfig): string {
+  const result = spawnSync("tmux", [...socketArgs(config), "display-message", "-p", "-t", agentTarget(config), "#{pane_title}"], { encoding: "utf8" });
+  if (result.status !== 0) return "";
+  return result.stdout.trimEnd();
+}
+
+function showPaneOption(config: ProjectConfig, name: string): string {
+  const result = spawnSync("tmux", [...socketArgs(config), "show-option", "-p", "-v", "-t", agentTarget(config), name], { encoding: "utf8" });
+  if (result.status !== 0) return "";
+  return result.stdout.trimEnd();
+}
+
+function setPaneOption(config: ProjectConfig, name: string, value: string): void {
+  spawnSync("tmux", [...socketArgs(config), "set-option", "-p", "-t", agentTarget(config), name, value], { stdio: "ignore" });
+}
+
+function unsetPaneOption(config: ProjectConfig, name: string): void {
+  spawnSync("tmux", [...socketArgs(config), "set-option", "-p", "-u", "-t", agentTarget(config), name], { stdio: "ignore" });
 }
