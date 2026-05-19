@@ -1,0 +1,42 @@
+{
+  "name": "pokecli",
+  "version": "0.1.0",
+  "description": "A local CLI wrapper that watches one tmux-backed AI agent session and pokes it with scheduled responses.",
+  "type": "module",
+  "bin": {
+    "poke": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "tsx src/cli.ts",
+    "build": "tsc && node scripts/chmod-bin.mjs",
+    "typecheck": "tsc --noEmit",
+    "prepack": "npm run build"
+  },
+  "keywords": [
+    "cli",
+    "tmux",
+    "agent",
+    "automation",
+    "claude",
+    "codex"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^7.8.6",
+    "commander": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
