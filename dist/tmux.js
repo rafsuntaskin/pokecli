@@ -59,6 +59,19 @@ export function capturePane(config, lines = 200) {
         `-${lines}`,
     ], { encoding: "utf8" });
 }
+export function displayMessage(config, message, durationMs = 5000) {
+    const list = spawnSync("tmux", [...socketArgs(config), "list-clients", "-t", config.tmuxTarget, "-F", "#{client_name}"], { encoding: "utf8" });
+    if (list.status !== 0)
+        return;
+    const clients = list.stdout.split("\n").filter(Boolean);
+    for (const client of clients) {
+        const args = [...socketArgs(config), "display-message", "-d", String(durationMs), "-c", client, "-t", config.tmuxTarget, message];
+        const result = spawnSync("tmux", args, { stdio: "ignore" });
+        if (result.status !== 0) {
+            spawnSync("tmux", [...socketArgs(config), "display-message", "-c", client, "-t", config.tmuxTarget, message], { stdio: "ignore" });
+        }
+    }
+}
 function socketArgs(config) {
     return ["-S", getTmuxSocketPath(config.projectRoot)];
 }

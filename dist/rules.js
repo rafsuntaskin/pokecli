@@ -39,11 +39,11 @@ function extractExpiry(rule, output, now) {
 export function evaluateRule(db, rule, output) {
     const matched = findMatch(rule, output);
     if (!matched)
-        return;
+        return null;
     const key = dedupeKey(rule, matched);
     const since = new Date(Date.now() - rule.dedupe_seconds * 1000).toISOString();
     if (hasRecentAction(db, key, since)) {
-        return;
+        return null;
     }
     const now = new Date();
     const expiry = extractExpiry(rule, output, now);
@@ -71,6 +71,7 @@ export function evaluateRule(db, rule, output) {
         runAt,
         source: expiry ? "expiry" : "delay",
     });
+    return action;
 }
 const CLAUDE_EXPIRY_PATTERN = "(?i)(?:try again|retry|resume|reset(?:s|ting)?)\\s+(?:at\\s+)?(?<time>(?:\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)|(?:in\\s+\\d+\\s*(?:minutes?|hours?|mins?|hrs?)))";
 const CODEX_EXPIRY_PATTERN = CLAUDE_EXPIRY_PATTERN;

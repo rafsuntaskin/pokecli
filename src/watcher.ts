@@ -10,7 +10,7 @@ import {
   openDb,
 } from "./db.js";
 import { findMatch, evaluateRule } from "./rules.js";
-import { capturePane, sendKeys, sessionExists } from "./tmux.js";
+import { capturePane, displayMessage, sendKeys, sessionExists } from "./tmux.js";
 
 export async function runWatcher(projectRoot: string, options: { once?: boolean } = {}): Promise<void> {
   const config = readConfig(projectRoot);
@@ -30,7 +30,13 @@ export async function runWatcher(projectRoot: string, options: { once?: boolean 
       } else {
         const output = capturePane(config);
         for (const rule of listRules(db, true)) {
-          evaluateRule(db, rule, output);
+          const scheduled = evaluateRule(db, rule, output);
+          if (scheduled) {
+            const runAt = new Date(scheduled.run_at);
+            const summary = `Scheduled '${scheduled.response}' to fire at ${formatLocal(runAt)} (${formatRelative(Date.now(), runAt.getTime())})`;
+            console.log(summary);
+            displayMessage(config, `[poke] ${summary}`);
+          }
         }
       }
 
@@ -94,4 +100,24 @@ export async function runWatcher(projectRoot: string, options: { once?: boolean 
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function formatLocal(date: Date): string {
+  return date.toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function formatRelative(fromMs: number, toMs: number): string {
+  const diff = Math.max(0, toMs - fromMs);
+  const totalMin = Math.round(diff / 60_000);
+  if (totalMin < 1) return "in <1m";
+  if (totalMin < 60) return `in ${totalMin}m`;
+  const hours = Math.floor(totalMin / 60);
+  const mins = totalMin % 60;
+  return mins === 0 ? `in ${hours}h` : `in ${hours}h ${mins}m`;
 }

@@ -1,7 +1,7 @@
 import type { Db } from "./db.js";
 import { createScheduledAction, hasRecentAction, logEvent } from "./db.js";
 import { parseExpiryTime } from "./expiry.js";
-import type { Rule } from "./types.js";
+import type { Rule, ScheduledAction } from "./types.js";
 
 const MIN_SCHEDULE_MS = 60_000;
 
@@ -44,15 +44,15 @@ function extractExpiry(rule: Rule, output: string, now: Date): { captured: strin
   return { captured, parsed };
 }
 
-export function evaluateRule(db: Db, rule: Rule, output: string): void {
+export function evaluateRule(db: Db, rule: Rule, output: string): ScheduledAction | null {
   const matched = findMatch(rule, output);
-  if (!matched) return;
+  if (!matched) return null;
 
   const key = dedupeKey(rule, matched);
   const since = new Date(Date.now() - rule.dedupe_seconds * 1000).toISOString();
 
   if (hasRecentAction(db, key, since)) {
-    return;
+    return null;
   }
 
   const now = new Date();
@@ -82,6 +82,7 @@ export function evaluateRule(db: Db, rule: Rule, output: string): void {
     runAt,
     source: expiry ? "expiry" : "delay",
   });
+  return action;
 }
 
 const CLAUDE_EXPIRY_PATTERN =
