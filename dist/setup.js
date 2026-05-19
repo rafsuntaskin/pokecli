@@ -2,7 +2,8 @@ import { writeConfig } from "./config.js";
 import { openDb, createRule, logEvent } from "./db.js";
 import { parseDuration } from "./duration.js";
 import { createTmuxTarget, ensurePokeDir } from "./paths.js";
-import { assertTmuxAvailable, attachSession, startSession } from "./tmux.js";
+import { attachSession, startSession } from "./tmux.js";
+import { ensureTmuxAvailable } from "./tmux-install.js";
 import { claudeAutoResumeRule, codexAutoResumeRule } from "./rules.js";
 import { askConfirm, askInput, askSelect } from "./prompt.js";
 const FALLBACK_DELAY_SECONDS = parseDuration("30m");
@@ -19,7 +20,7 @@ export async function runFirstSetup(projectRoot) {
         console.log("Setup cancelled.");
         return;
     }
-    assertTmuxAvailable();
+    await ensureTmuxAvailable();
     const agent = await askSelect({
         message: "Which agent do you want to run?",
         choices: [

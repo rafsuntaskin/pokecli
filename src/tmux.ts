@@ -1,12 +1,13 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import { getTmuxSocketPath } from "./paths.js";
+import { missingTmuxMessage } from "./tmux-install.js";
 import type { ProjectConfig } from "./types.js";
 
 export function assertTmuxAvailable(): void {
   const result = spawnSync("tmux", ["-V"], { encoding: "utf8" });
 
   if (result.error || result.status !== 0) {
-    throw new Error("tmux is required but was not found. Install tmux, then run poke again.");
+    throw new Error(missingTmuxMessage());
   }
 }
 

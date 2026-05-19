@@ -2,7 +2,8 @@ import { writeConfig } from "./config.js";
 import { openDb, createRule, logEvent } from "./db.js";
 import { parseDuration } from "./duration.js";
 import { createTmuxTarget, ensurePokeDir } from "./paths.js";
-import { assertTmuxAvailable, attachSession, startSession } from "./tmux.js";
+import { attachSession, startSession } from "./tmux.js";
+import { ensureTmuxAvailable } from "./tmux-install.js";
 import type { AgentKind, ProjectConfig, RuleInput } from "./types.js";
 import { claudeAutoResumeRule, codexAutoResumeRule } from "./rules.js";
 import { askConfirm, askInput, askSelect } from "./prompt.js";
@@ -25,7 +26,7 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
     return;
   }
 
-  assertTmuxAvailable();
+  await ensureTmuxAvailable();
 
   const agent = await askSelect<AgentKind>({
     message: "Which agent do you want to run?",
