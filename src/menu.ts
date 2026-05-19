@@ -1,4 +1,3 @@
-import { confirm, input, select } from "@inquirer/prompts";
 import { readConfig, updateConfig } from "./config.js";
 import {
   cancelAction,
@@ -13,6 +12,7 @@ import { parseDuration, formatDuration } from "./duration.js";
 import { capturePane, attachSession, sendKeys, sessionExists, startSession } from "./tmux.js";
 import { runWatcher } from "./watcher.js";
 import type { MatchType } from "./types.js";
+import { askConfirm, askInput, askSelect } from "./prompt.js";
 
 type MenuChoice =
   | "attach"
@@ -41,7 +41,7 @@ export async function runProjectMenu(projectRoot: string): Promise<void> {
   console.log(`Pending actions: ${pendingCount}\n`);
   db.close();
 
-  const choice = await select<MenuChoice>({
+  const choice = await askSelect<MenuChoice>({
     message: "What do you want to do?",
     choices: [
       { name: "Attach to session", value: "attach" },
@@ -80,7 +80,7 @@ export async function startConfiguredSession(projectRoot: string): Promise<void>
 }
 
 async function promptSend(projectRoot: string): Promise<void> {
-  const message = await input({ message: "Message:", required: true });
+  const message = await askInput({ message: "Message", required: true });
   const config = readConfig(projectRoot);
   const db = openDb(projectRoot);
   sendKeys(config, message);
@@ -110,19 +110,19 @@ export function printRules(projectRoot: string): void {
 }
 
 async function promptAddRule(projectRoot: string): Promise<void> {
-  const name = await input({ message: "Rule name:", required: true });
-  const matchType = await select<MatchType>({
+  const name = await askInput({ message: "Rule name", required: true });
+  const matchType = await askSelect<MatchType>({
     message: "Match type:",
     choices: [
       { name: "Contains text", value: "contains" },
       { name: "Regex", value: "regex" },
     ],
   });
-  const matchValue = await input({ message: "Match value:", required: true });
-  const response = await input({ message: "Response to send:", default: "continue", required: true });
-  const delay = await input({ message: "Delay:", default: "1h", validate: validateDuration });
-  const dedupe = await input({ message: "Dedupe window:", default: "90m", validate: validateDuration });
-  const requireStillVisible = await confirm({ message: "Require prompt to still be visible before sending?", default: true });
+  const matchValue = await askInput({ message: "Match value", required: true });
+  const response = await askInput({ message: "Response to send", default: "continue", required: true });
+  const delay = await askInput({ message: "Delay", default: "1h", validate: validateDuration });
+  const dedupe = await askInput({ message: "Dedupe window", default: "90m", validate: validateDuration });
+  const requireStillVisible = await askConfirm({ message: "Require prompt to still be visible before sending?", default: true });
 
   const db = openDb(projectRoot);
   createRule(db, {

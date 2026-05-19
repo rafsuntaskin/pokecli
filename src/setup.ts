@@ -1,4 +1,3 @@
-import { confirm, input, select } from "@inquirer/prompts";
 import { writeConfig } from "./config.js";
 import { openDb, createRule, logEvent } from "./db.js";
 import { parseDuration } from "./duration.js";
@@ -6,12 +5,13 @@ import { createTmuxTarget, ensurePokeDir } from "./paths.js";
 import { assertTmuxAvailable, attachSession, startSession } from "./tmux.js";
 import type { AgentKind, MatchType, ProjectConfig, RuleInput } from "./types.js";
 import { claudeAutoResumeRule, codexAutoResumeRule } from "./rules.js";
+import { askConfirm, askInput, askSelect } from "./prompt.js";
 
 export async function runFirstSetup(projectRoot: string): Promise<void> {
   console.log("Welcome to PokeCLI\n");
   console.log(`Project: ${projectRoot}\n`);
 
-  const useDirectory = await confirm({
+  const useDirectory = await askConfirm({
     message: "Use this directory?",
     default: true,
   });
@@ -23,7 +23,7 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
 
   assertTmuxAvailable();
 
-  const agent = await select<AgentKind>({
+  const agent = await askSelect<AgentKind>({
     message: "Which agent do you want to run?",
     choices: [
       { name: "Claude", value: "claude" },
@@ -33,7 +33,7 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
   });
 
   const command = agent === "custom"
-    ? await input({ message: "Command to run:", required: true })
+    ? await askInput({ message: "Command to run", required: true })
     : agent;
 
   const config: ProjectConfig = {
@@ -50,7 +50,7 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
   writeConfig(config);
   const db = openDb(projectRoot);
 
-  const enableAutoResume = await confirm({
+  const enableAutoResume = await askConfirm({
     message: "Enable auto-resume when a usage limit is hit?",
     default: true,
   });
@@ -67,13 +67,13 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
     logEvent(db, "setup_completed", "Initial setup completed without automation", { agent, command });
   }
 
-  const shouldStart = await confirm({ message: "Start the agent now?", default: true });
+  const shouldStart = await askConfirm({ message: "Start the agent now?", default: true });
   if (shouldStart) {
     startSession(config);
     logEvent(db, "session_started", "Session started", { target: config.tmuxTarget, command });
     console.log(`Started session: ${config.tmuxTarget}`);
 
-    const shouldAttach = await confirm({ message: "Attach to the session now?", default: true });
+    const shouldAttach = await askConfirm({ message: "Attach to the session now?", default: true });
     if (shouldAttach) {
       attachSession(config);
     }
@@ -83,18 +83,18 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
 }
 
 async function buildAutoResumeRule(agent: AgentKind): Promise<RuleInput> {
-  const delay = await input({
-    message: "Resume delay:",
+  const delay = await askInput({
+    message: "Resume delay",
     default: "1h",
     validate: validateDuration,
   });
-  const response = await input({
-    message: "Response to send:",
+  const response = await askInput({
+    message: "Response to send",
     default: "continue",
     required: true,
   });
-  const dedupe = await input({
-    message: "Dedupe window:",
+  const dedupe = await askInput({
+    message: "Dedupe window",
     default: "90m",
     validate: validateDuration,
   });
@@ -109,15 +109,15 @@ async function buildAutoResumeRule(agent: AgentKind): Promise<RuleInput> {
     return maybeCustomizeRule(base);
   }
 
-  const matchType = await select<MatchType>({
+  const matchType = await askSelect<MatchType>({
     message: "Match type:",
     choices: [
       { name: "Contains text", value: "contains" },
       { name: "Regex", value: "regex" },
     ],
   });
-  const matchValue = await input({
-    message: matchType === "contains" ? "Text to watch for:" : "Regex to watch for:",
+  const matchValue = await askInput({
+    message: matchType === "contains" ? "Text to watch for" : "Regex to watch for",
     required: true,
   });
 
@@ -133,15 +133,15 @@ async function buildAutoResumeRule(agent: AgentKind): Promise<RuleInput> {
 }
 
 async function maybeCustomizeRule(rule: RuleInput): Promise<RuleInput> {
-  const customize = await confirm({
+  const customize = await askConfirm({
     message: "Customize the default match pattern?",
     default: false,
   });
 
   if (!customize) return rule;
 
-  const matchValue = await input({
-    message: "Regex to watch for:",
+  const matchValue = await askInput({
+    message: "Regex to watch for",
     default: rule.matchValue,
     required: true,
   });

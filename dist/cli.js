@@ -1,145 +1,188 @@
 #!/usr/bin/env node
-import { Command } from "commander";
-import { configExists, readConfig } from "./config.js";
-import { createRule, logEvent, openDb } from "./db.js";
-import { parseDuration } from "./duration.js";
-import { cancelPendingAction, printActions, printRules, runProjectMenu, setAutomation, setRuleState, startConfiguredSession, } from "./menu.js";
 import { getProjectRoot } from "./paths.js";
 import { assertSupportedPlatform } from "./platform.js";
-import { runFirstSetup } from "./setup.js";
-import { attachSession, capturePane, sendKeys } from "./tmux.js";
-import { runWatcher } from "./watcher.js";
+const VERSION = "0.1.0";
 const projectRoot = getProjectRoot();
-assertSupportedPlatform();
-const program = new Command();
-program
-    .name("poke")
-    .description("Watch one tmux-backed AI agent session and send scheduled responses.")
-    .version("0.1.0");
-program
-    .action(async () => {
-    if (configExists(projectRoot)) {
-        await runProjectMenu(projectRoot);
+async function main() {
+    assertSupportedPlatform();
+    const args = process.argv.slice(2);
+    const command = args[0];
+    if (command === "-h" || command === "--help" || command === "help") {
+        printHelp();
+        return;
     }
-    else {
-        await runFirstSetup(projectRoot);
+    if (command === "-V" || command === "--version" || command === "version") {
+        console.log(VERSION);
+        return;
     }
-});
-program
-    .command("start")
-    .description("Start the configured session")
-    .action(async () => {
-    await startConfiguredSession(projectRoot);
-});
-program
-    .command("attach")
-    .description("Attach to the configured tmux session")
-    .action(() => {
-    attachSession(readConfig(projectRoot));
-});
-program
-    .command("send")
-    .description("Send text to the configured session")
-    .argument("<text...>")
-    .action((parts) => {
-    const message = parts.join(" ");
-    const config = readConfig(projectRoot);
-    const db = openDb(projectRoot);
-    sendKeys(config, message);
-    logEvent(db, "manual_send", "Manual message sent", { message });
-    db.close();
-});
-program
-    .command("capture")
-    .description("Print recent terminal output")
-    .option("--lines <lines>", "number of lines", "200")
-    .action((options) => {
-    console.log(capturePane(readConfig(projectRoot), Number(options.lines)));
-});
-program
-    .command("run")
-    .description("Run the watcher and scheduler loop")
-    .option("--once", "run a single watcher/scheduler tick", false)
-    .action(async (options) => {
-    await runWatcher(projectRoot, { once: options.once });
-});
-program
-    .command("rules")
-    .description("List configured rules")
-    .action(() => {
-    printRules(projectRoot);
-});
-program
-    .command("rule")
-    .description("Manage rules")
-    .argument("<action>", "add, enable, or disable")
-    .argument("[name]", "rule name for add or rule id/name for enable/disable")
-    .option("--contains <text>", "substring to match")
-    .option("--regex <pattern>", "regex to match")
-    .option("--response <text>", "response to send")
-    .option("--delay <duration>", "delay before sending", "0s")
-    .option("--dedupe <duration>", "dedupe window", "10m")
-    .option("--require-still-visible <value>", "require prompt to still be visible", "true")
-    .action((action, name, options) => {
+    const { configExists, readConfig } = await import("./config.js");
+    if (!command) {
+        if (configExists(projectRoot)) {
+            const { runProjectMenu } = await import("./menu.js");
+            await runProjectMenu(projectRoot);
+        }
+        else {
+            const { runFirstSetup } = await import("./setup.js");
+            await runFirstSetup(projectRoot);
+        }
+        return;
+    }
+    if (command === "start") {
+        const { startConfiguredSession } = await import("./menu.js");
+        await startConfiguredSession(projectRoot);
+        return;
+    }
+    if (command === "attach") {
+        const { attachSession } = await import("./tmux.js");
+        attachSession(readConfig(projectRoot));
+        return;
+    }
+    if (command === "send") {
+        const message = args.slice(1).join(" ").trim();
+        if (!message)
+            throw new Error("Usage: poke send <text>");
+        const { openDb, logEvent } = await import("./db.js");
+        const { sendKeys } = await import("./tmux.js");
+        const config = readConfig(projectRoot);
+        const db = openDb(projectRoot);
+        sendKeys(config, message);
+        logEvent(db, "manual_send", "Manual message sent", { message });
+        db.close();
+        return;
+    }
+    if (command === "capture") {
+        const { capturePane } = await import("./tmux.js");
+        const options = parseOptions(args.slice(1));
+        const lines = Number(options.lines ?? "200");
+        console.log(capturePane(readConfig(projectRoot), lines));
+        return;
+    }
+    if (command === "run") {
+        const { runWatcher } = await import("./watcher.js");
+        const options = parseOptions(args.slice(1));
+        await runWatcher(projectRoot, { once: Boolean(options.once) });
+        return;
+    }
+    if (command === "rules") {
+        const { printRules } = await import("./menu.js");
+        printRules(projectRoot);
+        return;
+    }
+    if (command === "rule") {
+        await handleRuleCommand(args.slice(1));
+        return;
+    }
+    if (command === "actions") {
+        const { printActions } = await import("./menu.js");
+        const options = parseOptions(args.slice(1));
+        printActions(projectRoot, Boolean(options.pending));
+        return;
+    }
+    if (command === "cancel") {
+        const { cancelPendingAction } = await import("./menu.js");
+        const id = args[1];
+        if (!id)
+            throw new Error("Usage: poke cancel <action-id>");
+        cancelPendingAction(projectRoot, id);
+        return;
+    }
+    if (command === "pause") {
+        const { setAutomation } = await import("./menu.js");
+        setAutomation(projectRoot, true);
+        return;
+    }
+    if (command === "resume") {
+        const { setAutomation } = await import("./menu.js");
+        setAutomation(projectRoot, false);
+        return;
+    }
+    throw new Error(`Unknown command: ${command}`);
+}
+async function handleRuleCommand(args) {
+    const action = args[0];
+    const name = args[1];
+    const options = parseOptions(args.slice(2));
     if (action === "enable" || action === "disable") {
         if (!name)
             throw new Error(`Rule id/name is required for ${action}.`);
+        const { setRuleState } = await import("./menu.js");
         setRuleState(projectRoot, name, action === "enable");
         return;
     }
     if (action !== "add") {
-        throw new Error(`Unknown rule action: ${action}`);
+        throw new Error("Usage: poke rule add <name> (--contains <text> | --regex <pattern>) --response <text>");
     }
     if (!name)
         throw new Error("Rule name is required.");
-    const hasContains = Boolean(options.contains);
-    const hasRegex = Boolean(options.regex);
+    const hasContains = typeof options.contains === "string";
+    const hasRegex = typeof options.regex === "string";
     if (hasContains === hasRegex)
         throw new Error("Pass exactly one of --contains or --regex.");
     if (!options.response)
         throw new Error("--response is required.");
+    const { createRule, openDb } = await import("./db.js");
+    const { parseDuration } = await import("./duration.js");
     const matchType = hasContains ? "contains" : "regex";
-    const matchValue = hasContains ? options.contains : options.regex;
+    const matchValue = String(hasContains ? options.contains : options.regex);
+    const response = String(options.response);
+    const delay = typeof options.delay === "string" ? options.delay : "0s";
+    const dedupe = typeof options.dedupe === "string" ? options.dedupe : "10m";
     const db = openDb(projectRoot);
     createRule(db, {
         name,
         matchType,
         matchValue,
-        response: options.response,
-        delaySeconds: parseDuration(options.delay ?? "0s"),
-        dedupeSeconds: parseDuration(options.dedupe ?? "10m"),
-        requireStillVisible: (options.requireStillVisible ?? "true") !== "false",
+        response,
+        delaySeconds: parseDuration(delay),
+        dedupeSeconds: parseDuration(dedupe),
+        requireStillVisible: (options["require-still-visible"] ?? "true") !== "false",
     });
     db.close();
     console.log(`Added rule: ${name}`);
-});
-program
-    .command("actions")
-    .description("List scheduled actions")
-    .option("--pending", "only show pending actions", false)
-    .action((options) => {
-    printActions(projectRoot, options.pending);
-});
-program
-    .command("cancel")
-    .description("Cancel a pending scheduled action")
-    .argument("<action-id>")
-    .action((id) => {
-    cancelPendingAction(projectRoot, id);
-});
-program
-    .command("pause")
-    .description("Pause automation")
-    .action(() => {
-    setAutomation(projectRoot, true);
-});
-program
-    .command("resume")
-    .description("Resume automation")
-    .action(() => {
-    setAutomation(projectRoot, false);
-});
-program.parseAsync().catch((error) => {
+}
+function parseOptions(args) {
+    const options = {};
+    for (let index = 0; index < args.length; index += 1) {
+        const arg = args[index];
+        if (!arg.startsWith("--"))
+            continue;
+        const key = arg.slice(2);
+        const next = args[index + 1];
+        if (!next || next.startsWith("--")) {
+            options[key] = true;
+        }
+        else {
+            options[key] = next;
+            index += 1;
+        }
+    }
+    return options;
+}
+function printHelp() {
+    console.log(`Usage: poke [command]
+
+Watch one tmux-backed AI agent session and send scheduled responses.
+
+Commands:
+  start                           Start the configured session
+  attach                          Attach to the configured tmux session
+  send <text>                     Send text to the configured session
+  capture [--lines 200]           Print recent terminal output
+  run [--once]                    Run the watcher and scheduler loop
+  rules                           List configured rules
+  rule add <name> [options]       Add a rule
+  rule enable <id|name>           Enable a rule
+  rule disable <id|name>          Disable a rule
+  actions [--pending]             List scheduled actions
+  cancel <action-id>              Cancel a pending scheduled action
+  pause                           Pause automation
+  resume                          Resume automation
+
+Options:
+  -h, --help                      Show help
+  -V, --version                   Show version`);
+}
+main().catch((error) => {
     console.error(error instanceof Error ? error.message : String(error));
     process.exitCode = 1;
 });
