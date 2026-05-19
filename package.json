@@ -8,7 +8,7 @@
   },
   "files": [
     "dist",
-    "scripts/postinstall.mjs",
+    "scripts",
     "README.md",
     "LICENSE"
   ],
