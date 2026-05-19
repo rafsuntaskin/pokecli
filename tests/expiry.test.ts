@@ -34,10 +34,34 @@ describe("parseExpiryTime — wall-clock formats", () => {
     assert.equal(r?.getMinutes(), 50);
   });
 
-  it("rolls to tomorrow when wall-clock time is already past", () => {
+  it("rolls to tomorrow when wall-clock time is well in the past (>1h)", () => {
     const r = parseExpiryTime("1am", NOW);
     assert.equal(r?.getHours(), 1);
     assert.equal(r?.getDate(), 20);
+  });
+
+  it("keeps target on today when only a few minutes have passed", () => {
+    // User triggers at 12:25am, message says 12:30am, watcher polls a few
+    // seconds after 12:30am. Should NOT roll forward to tomorrow.
+    const now = new Date("2026-05-20T00:30:02");
+    const r = parseExpiryTime("12:30am", now);
+    assert.equal(r?.getDate(), 20, "should stay on May 20, not roll to May 21");
+    assert.equal(r?.getHours(), 0);
+    assert.equal(r?.getMinutes(), 30);
+  });
+
+  it("keeps target on today when 30 minutes past (within tolerance)", () => {
+    const now = new Date("2026-05-20T13:30:00");
+    const r = parseExpiryTime("1pm", now);
+    assert.equal(r?.getDate(), 20);
+    assert.equal(r?.getHours(), 13);
+  });
+
+  it("rolls to tomorrow when more than 1h past (outside tolerance)", () => {
+    const now = new Date("2026-05-20T08:00:00");
+    const r = parseExpiryTime("5am", now);
+    assert.equal(r?.getDate(), 21);
+    assert.equal(r?.getHours(), 5);
   });
 
   it("handles 12pm (noon) correctly", () => {

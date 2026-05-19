@@ -22,7 +22,8 @@ export function parseExpiryTime(captured: string, now: Date): Date | null {
 
     const target = new Date(now);
     target.setHours(hour, minute, 0, 0);
-    if (target.getTime() <= now.getTime()) {
+    const ROLL_FORWARD_TOLERANCE_MS = 60 * 60_000;
+    if (now.getTime() - target.getTime() > ROLL_FORWARD_TOLERANCE_MS) {
       target.setDate(target.getDate() + 1);
     }
     return target;
