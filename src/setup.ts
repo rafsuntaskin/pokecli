@@ -40,8 +40,9 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
 
   const db = openDb(projectRoot);
   const rule = buildAutoResumeRule(agent);
+  db.prepare("delete from rules where name = ?").run(rule.name);
   createRule(db, rule);
-  logEvent(db, "setup_completed", "Initial setup completed with auto-resume rule", { agent, ruleName: rule.name });
+  logEvent(db, "setup_completed", "Setup completed", { agent, ruleName: rule.name });
   db.close();
 
   startSession(config);

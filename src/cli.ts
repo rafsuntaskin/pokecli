@@ -124,6 +124,12 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (command === "restart-watcher") {
+    const { restartWatcher } = await import("./menu.js");
+    restartWatcher(projectRoot);
+    return;
+  }
+
   throw new Error(`Unknown command: ${command}`);
 }
 
@@ -199,12 +205,16 @@ function printHelp(): void {
 
 Watch one tmux-backed AI agent session and send scheduled responses.
 
+Running \`poke\` with no command runs first-time setup or, for an
+existing project, starts the session if it's not running and attaches.
+
 Commands:
   start                           Start the configured session
   attach                          Attach to the configured tmux session
   send <text>                     Send text to the configured session
   capture [--lines 200]           Print recent terminal output
   run [--once]                    Run the watcher and scheduler loop
+  restart-watcher                 Restart the hidden watcher window
   rules                           List configured rules
   rule add <name> [options]       Add a rule
   rule enable <id|name>           Enable a rule

@@ -9,54 +9,17 @@ import {
 } from "./db.js";
 import { formatDuration } from "./duration.js";
 import { attachSession, sessionExists, startSession, startWatcherWindow } from "./tmux.js";
-import { askSelect } from "./prompt.js";
-
-type MenuChoice = "session" | "watch" | "toggle-automation" | "exit";
 
 export async function runProjectMenu(projectRoot: string): Promise<void> {
   const config = readConfig(projectRoot);
-  const db = openDb(projectRoot);
-  const pendingCount = listActions(db, true).length;
-  const running = sessionExists(config);
-  db.close();
 
-  console.log("PokeCLI\n");
-  console.log(`Project: ${config.projectRoot}`);
-  console.log(`Command: ${config.command}`);
-  console.log(`Session: ${running ? "running" : "stopped"}`);
-  console.log(`Automation: ${config.automationPaused ? "paused" : "on"}`);
-  console.log(`Pending actions: ${pendingCount}\n`);
-
-  const sessionLabel = running ? "Attach to session" : "Start session";
-  const automationLabel = config.automationPaused ? "Resume automation" : "Pause automation";
-
-  const choice = await askSelect<MenuChoice>({
-    message: "What do you want to do?",
-    choices: [
-      { name: sessionLabel, value: "session" },
-      { name: "Restart watcher", value: "watch" },
-      { name: automationLabel, value: "toggle-automation" },
-      { name: "Exit", value: "exit" },
-    ],
-  });
-
-  if (choice === "session") {
-    if (running) {
-      attachSession(readConfig(projectRoot));
-    } else {
-      await startConfiguredSession(projectRoot);
-      attachSession(readConfig(projectRoot));
-    }
+  if (!sessionExists(config)) {
+    const { runFirstSetup } = await import("./setup.js");
+    await runFirstSetup(projectRoot);
+    return;
   }
-  if (choice === "watch") {
-    if (!running) {
-      console.log("Session is not running. Start it first.");
-    } else {
-      startWatcherWindow(readConfig(projectRoot));
-      console.log("Watcher restarted.");
-    }
-  }
-  if (choice === "toggle-automation") setAutomation(projectRoot, !config.automationPaused);
+
+  attachSession(config);
 }
 
 export async function startConfiguredSession(projectRoot: string): Promise<void> {
@@ -65,7 +28,16 @@ export async function startConfiguredSession(projectRoot: string): Promise<void>
   startSession(config);
   logEvent(db, "session_started", "Session started", { target: config.tmuxTarget, command: config.command });
   db.close();
-  console.log(`Started session: ${config.tmuxTarget}`);
+  console.log(`Started ${config.command} in ${config.tmuxTarget}. Press Ctrl-b d to detach.`);
+}
+
+export function restartWatcher(projectRoot: string): void {
+  const config = readConfig(projectRoot);
+  if (!sessionExists(config)) {
+    throw new Error(`Session is not running. Start it with "poke".`);
+  }
+  startWatcherWindow(config);
+  console.log("Watcher restarted.");
 }
 
 export function printRules(projectRoot: string): void {
