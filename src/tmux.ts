@@ -17,7 +17,7 @@ export function sessionExists(config: ProjectConfig): boolean {
 }
 
 function agentTarget(config: ProjectConfig): string {
-  return `${config.tmuxTarget}:0`;
+  return `${config.tmuxTarget}:agent`;
 }
 
 export function startSession(config: ProjectConfig): void {
@@ -48,7 +48,7 @@ export function startSession(config: ProjectConfig): void {
 }
 
 export function startWatcherWindow(config: ProjectConfig): void {
-  spawnSync("tmux", [...socketArgs(config), "kill-window", "-t", `${config.tmuxTarget}:1`], { stdio: "ignore" });
+  spawnSync("tmux", [...socketArgs(config), "kill-window", "-t", `${config.tmuxTarget}:watcher`], { stdio: "ignore" });
   const result = spawnSync("tmux", [
     ...socketArgs(config),
     "new-window",
@@ -58,7 +58,7 @@ export function startWatcherWindow(config: ProjectConfig): void {
     "-c",
     config.projectRoot,
     "-t",
-    `${config.tmuxTarget}:1`,
+    config.tmuxTarget,
     "poke run",
   ], { stdio: "ignore" });
   if (result.status !== 0) {
