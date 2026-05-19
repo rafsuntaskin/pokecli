@@ -13,6 +13,20 @@ The first MVP use case is auto-resuming an agent after a usage limit prompt.
 
 ## Install
 
+From GitHub:
+
+```bash
+npm install -g git+ssh://git@github.com/rafsuntaskin/pokecli.git
+```
+
+Or with HTTPS:
+
+```bash
+npm install -g github:rafsuntaskin/pokecli
+```
+
+After npm publishing:
+
 ```bash
 npm install -g pokecli
 ```
@@ -20,6 +34,8 @@ npm install -g pokecli
 For local development:
 
 ```bash
+git clone git@github.com:rafsuntaskin/pokecli.git
+cd pokecli
 npm install
 npm run build
 npm link
