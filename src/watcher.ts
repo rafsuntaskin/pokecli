@@ -26,17 +26,28 @@ export async function runWatcher(projectRoot: string, options: { once?: boolean 
   while (running) {
     try {
       if (!sessionExists(config)) {
-        logEvent(db, "error", "Configured tmux session is not running", { target: config.tmuxTarget });
-      } else {
-        const output = capturePane(config, 0);
-        for (const rule of listRules(db, true)) {
-          const scheduled = evaluateRule(db, rule, output);
-          if (scheduled) {
-            const runAt = new Date(scheduled.run_at);
-            const summary = `Scheduled '${scheduled.response}' to fire at ${formatLocal(runAt)} (${formatRelative(Date.now(), runAt.getTime())})`;
-            console.log(summary);
-            displayMessage(config, `[poke] ${summary}`);
-          }
+        console.log("Session is gone. Stopping watcher.");
+        break;
+      }
+      let output: string;
+      try {
+        output = capturePane(config, 0);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/can't find window|no such window|no current window/i.test(message)) {
+          console.log("Agent window is gone. Stopping watcher.");
+          logEvent(db, "watcher_stopped", "Watcher stopped because agent window is gone");
+          break;
+        }
+        throw error;
+      }
+      for (const rule of listRules(db, true)) {
+        const scheduled = evaluateRule(db, rule, output);
+        if (scheduled) {
+          const runAt = new Date(scheduled.run_at);
+          const summary = `Scheduled '${scheduled.response}' to fire at ${formatLocal(runAt)} (${formatRelative(Date.now(), runAt.getTime())})`;
+          console.log(summary);
+          displayMessage(config, `[poke] ${summary}`);
         }
       }
 
