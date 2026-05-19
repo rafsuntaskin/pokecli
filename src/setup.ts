@@ -84,8 +84,8 @@ export async function runFirstSetup(projectRoot: string): Promise<void> {
 
 async function buildAutoResumeRule(agent: AgentKind): Promise<RuleInput> {
   const delay = await askInput({
-    message: "Resume delay",
-    default: "1h",
+    message: "Fallback delay (used when no expiry time is parsed from the limit message)",
+    default: "30m",
     validate: validateDuration,
   });
   const response = await askInput({

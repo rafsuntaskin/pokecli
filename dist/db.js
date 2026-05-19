@@ -18,7 +18,8 @@ function migrate(db) {
       dedupe_seconds integer not null default 600,
       require_still_visible integer not null default 1,
       enabled integer not null default 1,
-      created_at text not null
+      created_at text not null,
+      expiry_pattern text
     );
 
     create table if not exists scheduled_actions (
@@ -42,6 +43,10 @@ function migrate(db) {
       created_at text not null
     );
   `);
+    const ruleColumns = db.prepare("pragma table_info(rules)").all();
+    if (!ruleColumns.some((col) => col.name === "expiry_pattern")) {
+        db.exec("alter table rules add column expiry_pattern text");
+    }
 }
 export function nowIso() {
     return new Date().toISOString();
@@ -56,15 +61,16 @@ export function createRule(db, input) {
         delay_seconds: input.delaySeconds,
         dedupe_seconds: input.dedupeSeconds,
         require_still_visible: input.requireStillVisible ? 1 : 0,
+        expiry_pattern: input.expiryPattern ?? null,
         enabled: input.enabled === false ? 0 : 1,
         created_at: nowIso(),
     };
     db.prepare(`
     insert into rules (
       id, name, match_type, match_value, response, delay_seconds, dedupe_seconds,
-      require_still_visible, enabled, created_at
-    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(rule.id, rule.name, rule.match_type, rule.match_value, rule.response, rule.delay_seconds, rule.dedupe_seconds, rule.require_still_visible, rule.enabled, rule.created_at);
+      require_still_visible, expiry_pattern, enabled, created_at
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(rule.id, rule.name, rule.match_type, rule.match_value, rule.response, rule.delay_seconds, rule.dedupe_seconds, rule.require_still_visible, rule.expiry_pattern, rule.enabled, rule.created_at);
     return rule;
 }
 export function listRules(db, enabledOnly = false) {

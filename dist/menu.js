@@ -83,6 +83,7 @@ export function printRules(projectRoot) {
                 `response=${rule.response}`,
                 `delay=${formatDuration(rule.delay_seconds)}`,
                 `dedupe=${formatDuration(rule.dedupe_seconds)}`,
+                ...(rule.expiry_pattern ? [`expiry=${rule.expiry_pattern}`] : []),
             ].join(" | "));
         }
     }
@@ -99,7 +100,7 @@ async function promptAddRule(projectRoot) {
     });
     const matchValue = await askInput({ message: "Match value", required: true });
     const response = await askInput({ message: "Response to send", default: "continue", required: true });
-    const delay = await askInput({ message: "Delay", default: "1h", validate: validateDuration });
+    const delay = await askInput({ message: "Delay", default: "0s", validate: validateDuration });
     const dedupe = await askInput({ message: "Dedupe window", default: "90m", validate: validateDuration });
     const requireStillVisible = await askConfirm({ message: "Require prompt to still be visible before sending?", default: true });
     const db = openDb(projectRoot);

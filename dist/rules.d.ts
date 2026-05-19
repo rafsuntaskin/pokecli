@@ -12,6 +12,7 @@ export declare function claudeAutoResumeRule(delaySeconds: number, response: str
     delaySeconds: number;
     dedupeSeconds: number;
     requireStillVisible: boolean;
+    expiryPattern: string;
 };
 export declare function codexAutoResumeRule(delaySeconds: number, response: string, dedupeSeconds: number): {
     name: string;
@@ -21,4 +22,5 @@ export declare function codexAutoResumeRule(delaySeconds: number, response: stri
     delaySeconds: number;
     dedupeSeconds: number;
     requireStillVisible: boolean;
+    expiryPattern: string;
 };

@@ -136,6 +136,7 @@ async function handleRuleCommand(args) {
         delaySeconds: parseDuration(delay),
         dedupeSeconds: parseDuration(dedupe),
         requireStillVisible: (options["require-still-visible"] ?? "true") !== "false",
+        expiryPattern: typeof options["expiry-pattern"] === "string" ? String(options["expiry-pattern"]) : null,
     });
     db.close();
     console.log(`Added rule: ${name}`);

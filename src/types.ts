@@ -21,6 +21,7 @@ export type Rule = {
   delay_seconds: number;
   dedupe_seconds: number;
   require_still_visible: number;
+  expiry_pattern: string | null;
   enabled: number;
   created_at: string;
 };
@@ -46,5 +47,6 @@ export type RuleInput = {
   delaySeconds: number;
   dedupeSeconds: number;
   requireStillVisible: boolean;
+  expiryPattern?: string | null;
   enabled?: boolean;
 };

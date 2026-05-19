@@ -70,8 +70,8 @@ export async function runFirstSetup(projectRoot) {
 }
 async function buildAutoResumeRule(agent) {
     const delay = await askInput({
-        message: "Resume delay",
-        default: "1h",
+        message: "Fallback delay (used when no expiry time is parsed from the limit message)",
+        default: "30m",
         validate: validateDuration,
     });
     const response = await askInput({
