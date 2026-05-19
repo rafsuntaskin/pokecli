@@ -1,4 +1,15 @@
 #!/usr/bin/env node
+const originalEmit = process.emit;
+process.emit = function emit(this: NodeJS.Process, event: string, ...args: unknown[]): boolean {
+  if (event === "warning") {
+    const warning = args[0] as { name?: string; message?: string } | undefined;
+    if (warning?.name === "ExperimentalWarning" && /SQLite/.test(warning.message ?? "")) {
+      return false;
+    }
+  }
+  return (originalEmit as (this: NodeJS.Process, e: string, ...a: unknown[]) => boolean).call(this, event, ...args);
+} as typeof process.emit;
+
 import { getProjectRoot } from "./paths.js";
 import { assertSupportedPlatform } from "./platform.js";
 import type { MatchType } from "./types.js";

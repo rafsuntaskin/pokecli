@@ -1,37 +1,25 @@
 import { readConfig, updateConfig } from "./config.js";
 import {
   cancelAction,
-  createRule,
   listActions,
   listRules,
   logEvent,
   openDb,
   setRuleEnabled,
 } from "./db.js";
-import { parseDuration, formatDuration } from "./duration.js";
-import { capturePane, attachSession, sendKeys, sessionExists, startSession } from "./tmux.js";
+import { formatDuration } from "./duration.js";
+import { attachSession, sessionExists, startSession } from "./tmux.js";
 import { runWatcher } from "./watcher.js";
-import type { MatchType } from "./types.js";
-import { askConfirm, askInput, askSelect } from "./prompt.js";
+import { askSelect } from "./prompt.js";
 
-type MenuChoice =
-  | "attach"
-  | "start"
-  | "send"
-  | "watch"
-  | "rules"
-  | "add-rule"
-  | "actions"
-  | "pause"
-  | "resume"
-  | "capture"
-  | "exit";
+type MenuChoice = "session" | "watch" | "toggle-automation" | "exit";
 
 export async function runProjectMenu(projectRoot: string): Promise<void> {
   const config = readConfig(projectRoot);
   const db = openDb(projectRoot);
   const pendingCount = listActions(db, true).length;
   const running = sessionExists(config);
+  db.close();
 
   console.log("PokeCLI\n");
   console.log(`Project: ${config.projectRoot}`);
@@ -39,35 +27,30 @@ export async function runProjectMenu(projectRoot: string): Promise<void> {
   console.log(`Session: ${running ? "running" : "stopped"}`);
   console.log(`Automation: ${config.automationPaused ? "paused" : "on"}`);
   console.log(`Pending actions: ${pendingCount}\n`);
-  db.close();
+
+  const sessionLabel = running ? "Attach to session" : "Start session";
+  const automationLabel = config.automationPaused ? "Resume automation" : "Pause automation";
 
   const choice = await askSelect<MenuChoice>({
     message: "What do you want to do?",
     choices: [
-      { name: "Attach to session", value: "attach" },
-      { name: "Start session", value: "start" },
-      { name: "Send message", value: "send" },
+      { name: sessionLabel, value: "session" },
       { name: "Start watcher", value: "watch" },
-      { name: "View rules", value: "rules" },
-      { name: "Add rule", value: "add-rule" },
-      { name: "View pending actions", value: "actions" },
-      { name: "Pause automation", value: "pause" },
-      { name: "Resume automation", value: "resume" },
-      { name: "Capture output", value: "capture" },
+      { name: automationLabel, value: "toggle-automation" },
       { name: "Exit", value: "exit" },
     ],
   });
 
-  if (choice === "attach") attachSession(readConfig(projectRoot));
-  if (choice === "start") await startConfiguredSession(projectRoot);
-  if (choice === "send") await promptSend(projectRoot);
+  if (choice === "session") {
+    if (running) {
+      attachSession(readConfig(projectRoot));
+    } else {
+      await startConfiguredSession(projectRoot);
+      attachSession(readConfig(projectRoot));
+    }
+  }
   if (choice === "watch") await runWatcher(projectRoot);
-  if (choice === "rules") printRules(projectRoot);
-  if (choice === "add-rule") await promptAddRule(projectRoot);
-  if (choice === "actions") printActions(projectRoot, true);
-  if (choice === "pause") setAutomation(projectRoot, true);
-  if (choice === "resume") setAutomation(projectRoot, false);
-  if (choice === "capture") console.log(capturePane(readConfig(projectRoot)));
+  if (choice === "toggle-automation") setAutomation(projectRoot, !config.automationPaused);
 }
 
 export async function startConfiguredSession(projectRoot: string): Promise<void> {
@@ -77,15 +60,6 @@ export async function startConfiguredSession(projectRoot: string): Promise<void>
   logEvent(db, "session_started", "Session started", { target: config.tmuxTarget, command: config.command });
   db.close();
   console.log(`Started session: ${config.tmuxTarget}`);
-}
-
-async function promptSend(projectRoot: string): Promise<void> {
-  const message = await askInput({ message: "Message", required: true });
-  const config = readConfig(projectRoot);
-  const db = openDb(projectRoot);
-  sendKeys(config, message);
-  logEvent(db, "manual_send", "Manual message sent", { message });
-  db.close();
 }
 
 export function printRules(projectRoot: string): void {
@@ -108,35 +82,6 @@ export function printRules(projectRoot: string): void {
   }
 
   db.close();
-}
-
-async function promptAddRule(projectRoot: string): Promise<void> {
-  const name = await askInput({ message: "Rule name", required: true });
-  const matchType = await askSelect<MatchType>({
-    message: "Match type:",
-    choices: [
-      { name: "Contains text", value: "contains" },
-      { name: "Regex", value: "regex" },
-    ],
-  });
-  const matchValue = await askInput({ message: "Match value", required: true });
-  const response = await askInput({ message: "Response to send", default: "continue", required: true });
-  const delay = await askInput({ message: "Delay", default: "0s", validate: validateDuration });
-  const dedupe = await askInput({ message: "Dedupe window", default: "90m", validate: validateDuration });
-  const requireStillVisible = await askConfirm({ message: "Require prompt to still be visible before sending?", default: true });
-
-  const db = openDb(projectRoot);
-  createRule(db, {
-    name,
-    matchType,
-    matchValue,
-    response,
-    delaySeconds: parseDuration(delay),
-    dedupeSeconds: parseDuration(dedupe),
-    requireStillVisible,
-  });
-  db.close();
-  console.log(`Added rule: ${name}`);
 }
 
 export function printActions(projectRoot: string, pendingOnly: boolean): void {
@@ -174,13 +119,4 @@ export function setRuleState(projectRoot: string, ruleId: string, enabled: boole
   const db = openDb(projectRoot);
   setRuleEnabled(db, ruleId, enabled);
   db.close();
-}
-
-function validateDuration(value: string): true | string {
-  try {
-    parseDuration(value);
-    return true;
-  } catch (error) {
-    return error instanceof Error ? error.message : "Invalid duration.";
-  }
 }

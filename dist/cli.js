@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+const originalEmit = process.emit;
+process.emit = function emit(event, ...args) {
+    if (event === "warning") {
+        const warning = args[0];
+        if (warning?.name === "ExperimentalWarning" && /SQLite/.test(warning.message ?? "")) {
+            return false;
+        }
+    }
+    return originalEmit.call(this, event, ...args);
+};
 import { getProjectRoot } from "./paths.js";
 import { assertSupportedPlatform } from "./platform.js";
 const VERSION = "0.1.0";
