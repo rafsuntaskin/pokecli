@@ -1,34 +1,46 @@
 # PokeCLI
 
-PokeCLI is a local CLI wrapper for one long-running AI agent session in a project directory. It starts `claude`, `codex`, or a custom command inside `tmux`, watches the terminal output, and can send allowlisted responses after a configured delay.
+**Stop babysitting AI coding agents when they hit usage limits.**
 
-The first MVP use case is auto-resuming an agent after a usage limit prompt.
+You start `claude` (or `codex`), it works for a while, then prints:
+
+> *You've reached the usage limit. Please try again at 3:00 PM.*
+
+…and just sits there. If you're not at your desk at 3pm to type `continue`, you've lost hours of momentum. The agent doesn't resume itself.
+
+PokeCLI runs the agent inside a project-local `tmux` session, watches the pane for that limit message, **reads the reset time directly out of it**, and types `continue` at exactly that moment so the work picks up the second the limit lifts.
+
+```
+14:00  agent hits limit  → "try again at 3:00 PM"
+14:00  poke parses "3:00 PM", schedules "continue" for 15:00
+15:00  poke verifies the prompt is still on screen, sends "continue"
+15:00  agent resumes
+```
+
+That's the whole thing.
+
+## Why not just an AI in a loop?
+
+PokeCLI does **not** use an AI to decide what to send back. It matches the limit message with a regex, extracts the time string, parses it into a local timestamp, and types a single allowlisted response (`"continue"`). No model in the loop means no surprise instructions sent to your agent, no token cost to babysit a token-limited agent, and a behavior you can read off in 100 lines of code.
+
+Before sending, it re-checks that the limit prompt is still on screen — so if you came back and resumed manually, the scheduled send is silently skipped instead of clobbering your in-progress work.
 
 ## Requirements
 
 - Node.js 22.5 or newer
 - `tmux`
-- macOS or Linux
-- Windows through WSL only
+- macOS or Linux (Windows via WSL only)
 
 ## Install
-
-From GitHub:
-
-```bash
-npm install -g git+ssh://git@github.com/rafsuntaskin/pokecli.git
-```
-
-Or with HTTPS:
 
 ```bash
 npm install -g github:rafsuntaskin/pokecli
 ```
 
-After npm publishing:
+Or with SSH:
 
 ```bash
-npm install -g pokecli
+npm install -g git+ssh://git@github.com/rafsuntaskin/pokecli.git
 ```
 
 For local development:
@@ -44,31 +56,35 @@ npm link
 ## Quickstart
 
 ```bash
-cd /path/to/project
+cd /path/to/your/project
 poke
 ```
 
-On first run, PokeCLI asks which agent to start and whether to enable the auto-resume-on-limit template. When enabled, the watcher reads the reset time directly from the agent's limit message (e.g. "try again at 3pm", "in 47 minutes") and schedules the resume at that local time. If no time can be parsed, the configured fallback delay (default 30m) is used instead.
-
-## Common Commands
+A five-question wizard runs once: pick the agent (Claude / Codex / custom command), confirm auto-resume, start the session. Then in a second terminal:
 
 ```bash
-poke
-poke start
-poke attach
-poke send "continue"
-poke capture
+cd /path/to/your/project
 poke run
-poke rules
-poke actions --pending
-poke pause
-poke resume
 ```
 
-## Safety
+That's the watcher. Leave it running. When the agent hits a limit, PokeCLI handles it.
 
-PokeCLI does not use AI to decide what to answer. It only sends responses from rules that you explicitly enable. Delayed actions re-check the terminal output before sending by default.
+## Commands
 
-PokeCLI stores project-local state in `.poke/` and has no hosted backend or telemetry in the MVP.
+```bash
+poke                       # First-run wizard, or open the project menu
+poke start                 # Start the configured agent in tmux
+poke attach                # Attach to the tmux session
+poke run                   # Run the watcher loop (use in a second terminal)
+poke send "continue"       # Manually send text to the session
+poke capture               # Print the last 200 lines of the pane
+poke rules                 # List configured rules
+poke actions --pending     # List scheduled responses
+poke pause / poke resume   # Halt or resume automation without killing the session
+```
 
-The MVP uses a project-local tmux socket at `.poke/tmux.sock`, separate from your default tmux server.
+## Scope
+
+The MVP solves exactly one problem: auto-resume after a usage-limit prompt for Claude or Codex. Everything else (custom rules, custom agents, alternate responses) is supported through `poke rule add` but not part of the first-run experience. State lives in `.poke/` next to your project. No backend, no telemetry, no hosted anything.
+
+The tmux server runs on a project-local socket at `.poke/tmux.sock`, separate from your default tmux — so PokeCLI sessions can't collide with whatever else you have running.
