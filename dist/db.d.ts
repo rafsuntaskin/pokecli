@@ -1,0 +1,24 @@
+import { DatabaseSync } from "node:sqlite";
+import type { Rule, RuleInput, ScheduledAction } from "./types.js";
+export type Db = DatabaseSync;
+export declare function openDb(projectRoot: string): Db;
+export declare function nowIso(): string;
+export declare function createRule(db: Db, input: RuleInput): Rule;
+export declare function listRules(db: Db, enabledOnly?: boolean): Rule[];
+export declare function getRule(db: Db, id: string): Rule | undefined;
+export declare function setRuleEnabled(db: Db, id: string, enabled: boolean): void;
+export declare function createScheduledAction(db: Db, input: {
+    ruleId: string;
+    response: string;
+    runAt: string;
+    matchedOutput: string;
+    dedupeKey: string;
+}): ScheduledAction;
+export declare function listActions(db: Db, pendingOnly?: boolean): ScheduledAction[];
+export declare function listDueActions(db: Db): ScheduledAction[];
+export declare function cancelAction(db: Db, id: string): void;
+export declare function markActionExecuted(db: Db, id: string): void;
+export declare function markActionSkipped(db: Db, id: string, reason: string): void;
+export declare function markActionFailed(db: Db, id: string, reason: string): void;
+export declare function hasRecentAction(db: Db, dedupeKey: string, sinceIso: string): boolean;
+export declare function logEvent(db: Db, type: string, message: string, metadata?: unknown): void;
