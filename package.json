@@ -1,6 +1,6 @@
 {
   "name": "pokecli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A local CLI wrapper that watches one tmux-backed AI agent session and pokes it with scheduled responses.",
   "type": "module",
   "bin": {
