@@ -80,14 +80,9 @@ cd /path/to/your/project
 poke
 ```
 
-A five-question wizard runs once: pick the agent (Claude / Codex / custom command), confirm auto-resume, start the session. Then in a second terminal:
+One question on first run: Claude or Codex. PokeCLI starts the agent inside a project-local tmux session, auto-starts a hidden watcher in the same session, and attaches you to the agent. When the agent hits a limit, the watcher parses the reset time from the message and types `continue` at exactly that moment.
 
-```bash
-cd /path/to/your/project
-poke run
-```
-
-That's the watcher. Leave it running. When the agent hits a limit, PokeCLI handles it.
+To detach without ending the session, press `Ctrl-b d`. To come back, run `poke` again from the same directory.
 
 ## Commands
 

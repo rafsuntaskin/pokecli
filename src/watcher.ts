@@ -18,6 +18,7 @@ export async function runWatcher(projectRoot: string, options: { once?: boolean 
   const config = readConfig(projectRoot);
   const db = openDb(projectRoot);
   let running = true;
+  let lastTitleKey: string | null = null;
 
   process.on("SIGINT", () => {
     running = false;
@@ -95,7 +96,7 @@ export async function runWatcher(projectRoot: string, options: { once?: boolean 
         }
       }
 
-      syncScheduledPaneTitle(config, listActions(db, true));
+      lastTitleKey = syncScheduledPaneTitle(config, listActions(db, true), lastTitleKey);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       logEvent(db, "error", message);
@@ -127,9 +128,12 @@ function formatLocal(date: Date): string {
   });
 }
 
-function syncScheduledPaneTitle(config: ProjectConfig, pendingActions: ScheduledAction[]): void {
+function syncScheduledPaneTitle(config: ProjectConfig, pendingActions: ScheduledAction[], lastKey: string | null): string | null {
   const nextAction = pendingActions[0];
+  const key = nextAction ? `${pendingActions.length}|${nextAction.id}|${nextAction.run_at}` : null;
+  if (key === lastKey) return lastKey;
   setScheduledPaneTitle(config, nextAction ? formatTitleTime(new Date(nextAction.run_at)) : null);
+  return key;
 }
 
 function formatTitleTime(date: Date): string {

@@ -6,6 +6,7 @@ export async function runWatcher(projectRoot, options = {}) {
     const config = readConfig(projectRoot);
     const db = openDb(projectRoot);
     let running = true;
+    let lastTitleKey = null;
     process.on("SIGINT", () => {
         running = false;
     });
@@ -76,7 +77,7 @@ export async function runWatcher(projectRoot, options = {}) {
                     logEvent(db, "action_failed", message, { actionId: action.id });
                 }
             }
-            syncScheduledPaneTitle(config, listActions(db, true));
+            lastTitleKey = syncScheduledPaneTitle(config, listActions(db, true), lastTitleKey);
         }
         catch (error) {
             const message = error instanceof Error ? error.message : String(error);
@@ -105,9 +106,13 @@ function formatLocal(date) {
         minute: "2-digit",
     });
 }
-function syncScheduledPaneTitle(config, pendingActions) {
+function syncScheduledPaneTitle(config, pendingActions, lastKey) {
     const nextAction = pendingActions[0];
+    const key = nextAction ? `${pendingActions.length}|${nextAction.id}|${nextAction.run_at}` : null;
+    if (key === lastKey)
+        return lastKey;
     setScheduledPaneTitle(config, nextAction ? formatTitleTime(new Date(nextAction.run_at)) : null);
+    return key;
 }
 function formatTitleTime(date) {
     return date.toLocaleString(undefined, {
