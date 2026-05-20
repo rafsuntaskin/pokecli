@@ -45,6 +45,7 @@ export function startSession(config: ProjectConfig): void {
   }
 
   spawnSync("tmux", [...socketArgs(config), "set-option", "-t", config.tmuxTarget, "display-time", "5000"], { stdio: "ignore" });
+  spawnSync("tmux", [...socketArgs(config), "set-option", "-t", config.tmuxTarget, "mouse", "on"], { stdio: "ignore" });
 
   startWatcherWindow(config);
 }

@@ -35,6 +35,7 @@ export function startSession(config) {
         throw new Error("tmux did not create the session. Check tmux socket permissions and try again.");
     }
     spawnSync("tmux", [...socketArgs(config), "set-option", "-t", config.tmuxTarget, "display-time", "5000"], { stdio: "ignore" });
+    spawnSync("tmux", [...socketArgs(config), "set-option", "-t", config.tmuxTarget, "mouse", "on"], { stdio: "ignore" });
     startWatcherWindow(config);
 }
 export function startWatcherWindow(config) {
