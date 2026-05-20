@@ -137,6 +137,15 @@ function syncScheduledPaneTitle(config: ProjectConfig, pendingActions: Scheduled
 }
 
 function formatTitleTime(date: Date): string {
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+
+  if (sameDay) {
+    return date.toLocaleString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
   return date.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
