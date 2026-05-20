@@ -1,8 +1,6 @@
 import type { Db } from "./db.js";
 import type { Rule, ScheduledAction } from "./types.js";
 export declare function findMatch(rule: Rule, output: string): string | null;
-export declare function normalizeMatch(value: string): string;
-export declare function dedupeKey(rule: Rule, matched: string): string;
 export declare function evaluateRule(db: Db, rule: Rule, output: string): ScheduledAction | null;
 export declare function claudeAutoResumeRule(delaySeconds: number, response: string, dedupeSeconds: number): {
     name: string;

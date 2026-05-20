@@ -12,7 +12,6 @@ export declare function createScheduledAction(db: Db, input: {
     response: string;
     runAt: string;
     matchedOutput: string;
-    dedupeKey: string;
 }): ScheduledAction;
 export declare function listActions(db: Db, pendingOnly?: boolean): ScheduledAction[];
 export declare function listDueActions(db: Db): ScheduledAction[];
@@ -20,5 +19,5 @@ export declare function cancelAction(db: Db, id: string): void;
 export declare function markActionExecuted(db: Db, id: string): void;
 export declare function markActionSkipped(db: Db, id: string, reason: string): void;
 export declare function markActionFailed(db: Db, id: string, reason: string): void;
-export declare function hasRecentAction(db: Db, dedupeKey: string, sinceIso: string): boolean;
+export declare function hasPendingActionForRule(db: Db, ruleId: string): boolean;
 export declare function logEvent(db: Db, type: string, message: string, metadata?: unknown): void;

@@ -16,6 +16,7 @@
     "dev": "tsx src/cli.ts",
     "build": "tsc && node scripts/chmod-bin.mjs",
     "pack:release": "npm run build && npm pack",
+    "release:local": "node scripts/release-local.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test --test-reporter=spec tests/*.test.ts",
     "version": "node scripts/bump-readme.mjs"

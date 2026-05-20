@@ -1,5 +1,5 @@
 import type { Db } from "./db.js";
-import { createScheduledAction, hasRecentAction, logEvent } from "./db.js";
+import { createScheduledAction, hasPendingActionForRule, logEvent } from "./db.js";
 import { parseExpiryTime } from "./expiry.js";
 import type { Rule, ScheduledAction } from "./types.js";
 
@@ -18,18 +18,10 @@ export function findMatch(rule: Rule, output: string): string | null {
 
 function parseRegex(value: string): { pattern: string; flags: string } {
   if (value.startsWith("(?i)")) {
-    return { pattern: value.slice(4), flags: "i" };
+    return { pattern: value.slice(4), flags: "is" };
   }
 
-  return { pattern: value, flags: "" };
-}
-
-export function normalizeMatch(value: string): string {
-  return value.replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-export function dedupeKey(rule: Rule, matched: string): string {
-  return `${rule.id}:${normalizeMatch(matched)}`;
+  return { pattern: value, flags: "s" };
 }
 
 function extractExpiry(rule: Rule, output: string, now: Date): { captured: string; parsed: Date } | null {
@@ -48,10 +40,7 @@ export function evaluateRule(db: Db, rule: Rule, output: string): ScheduledActio
   const matched = findMatch(rule, output);
   if (!matched) return null;
 
-  const key = dedupeKey(rule, matched);
-  const since = new Date(Date.now() - rule.dedupe_seconds * 1000).toISOString();
-
-  if (hasRecentAction(db, key, since)) {
+  if (hasPendingActionForRule(db, rule.id)) {
     return null;
   }
 
@@ -74,7 +63,6 @@ export function evaluateRule(db: Db, rule: Rule, output: string): ScheduledActio
     response: rule.response,
     runAt,
     matchedOutput: matched,
-    dedupeKey: key,
   });
   logEvent(db, "action_scheduled", `Scheduled response for rule: ${rule.name}`, {
     actionId: action.id,

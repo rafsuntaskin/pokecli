@@ -3,8 +3,8 @@ import { strict as assert } from "node:assert";
 import { claudeAutoResumeRule, codexAutoResumeRule } from "../src/rules.js";
 
 function compile(pattern: string): RegExp {
-  if (pattern.startsWith("(?i)")) return new RegExp(pattern.slice(4), "i");
-  return new RegExp(pattern);
+  if (pattern.startsWith("(?i)")) return new RegExp(pattern.slice(4), "is");
+  return new RegExp(pattern, "s");
 }
 
 function hits(matchValue: string, text: string): boolean {
@@ -69,5 +69,15 @@ describe("codex auto-resume rule", () => {
 
   it("extracts time from 'resets 5pm'", () => {
     assert.equal(extractTime(codex.expiryPattern, "Rate limit · resets 5pm"), "5pm");
+  });
+
+  it("hits the real Codex fixture (line-wrapped 'try again at 8:59 PM')", () => {
+    const fixture = "■ You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage\nto purchase more credits or try again at 8:59 PM.";
+    assert.equal(hits(codex.matchValue, fixture), true);
+  });
+
+  it("extracts time from the real Codex fixture", () => {
+    const fixture = "■ You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage\nto purchase more credits or try again at 8:59 PM.";
+    assert.equal(extractTime(codex.expiryPattern, fixture), "8:59 PM");
   });
 });

@@ -116,7 +116,6 @@ export function createScheduledAction(
     response: string;
     runAt: string;
     matchedOutput: string;
-    dedupeKey: string;
   },
 ): ScheduledAction {
   const action: ScheduledAction = {
@@ -126,7 +125,7 @@ export function createScheduledAction(
     run_at: input.runAt,
     status: "pending",
     matched_output: input.matchedOutput,
-    dedupe_key: input.dedupeKey,
+    dedupe_key: "",
     created_at: nowIso(),
     executed_at: null,
     skip_reason: null,
@@ -181,14 +180,12 @@ export function markActionFailed(db: Db, id: string, reason: string): void {
   db.prepare("update scheduled_actions set status = 'failed', executed_at = ?, skip_reason = ? where id = ?").run(nowIso(), reason, id);
 }
 
-export function hasRecentAction(db: Db, dedupeKey: string, sinceIso: string): boolean {
+export function hasPendingActionForRule(db: Db, ruleId: string): boolean {
   const row = db.prepare(`
     select id from scheduled_actions
-    where dedupe_key = ?
-      and status in ('pending', 'executed')
-      and created_at >= ?
+    where rule_id = ? and status = 'pending'
     limit 1
-  `).get(dedupeKey, sinceIso);
+  `).get(ruleId);
 
   return Boolean(row);
 }
