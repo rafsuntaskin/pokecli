@@ -35,6 +35,7 @@ function migrate(db: Db): void {
       status text not null,
       matched_output text,
       dedupe_key text not null,
+      schedule_source text not null default 'delay',
       created_at text not null,
       executed_at text,
       skip_reason text
@@ -52,6 +53,11 @@ function migrate(db: Db): void {
   const ruleColumns = db.prepare("pragma table_info(rules)").all() as Array<{ name: string }>;
   if (!ruleColumns.some((col) => col.name === "expiry_pattern")) {
     db.exec("alter table rules add column expiry_pattern text");
+  }
+
+  const actionColumns = db.prepare("pragma table_info(scheduled_actions)").all() as Array<{ name: string }>;
+  if (!actionColumns.some((col) => col.name === "schedule_source")) {
+    db.exec("alter table scheduled_actions add column schedule_source text not null default 'delay'");
   }
 }
 
@@ -116,6 +122,7 @@ export function createScheduledAction(
     response: string;
     runAt: string;
     matchedOutput: string;
+    scheduleSource: "expiry" | "delay";
   },
 ): ScheduledAction {
   const action: ScheduledAction = {
@@ -126,6 +133,7 @@ export function createScheduledAction(
     status: "pending",
     matched_output: input.matchedOutput,
     dedupe_key: "",
+    schedule_source: input.scheduleSource,
     created_at: nowIso(),
     executed_at: null,
     skip_reason: null,
@@ -134,8 +142,8 @@ export function createScheduledAction(
   db.prepare(`
     insert into scheduled_actions (
       id, rule_id, response, run_at, status, matched_output, dedupe_key,
-      created_at, executed_at, skip_reason
-    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      schedule_source, created_at, executed_at, skip_reason
+    ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     action.id,
     action.rule_id,
@@ -144,6 +152,7 @@ export function createScheduledAction(
     action.status,
     action.matched_output,
     action.dedupe_key,
+    action.schedule_source,
     action.created_at,
     action.executed_at,
     action.skip_reason,
@@ -180,14 +189,17 @@ export function markActionFailed(db: Db, id: string, reason: string): void {
   db.prepare("update scheduled_actions set status = 'failed', executed_at = ?, skip_reason = ? where id = ?").run(nowIso(), reason, id);
 }
 
-export function hasPendingActionForRule(db: Db, ruleId: string): boolean {
-  const row = db.prepare(`
-    select id from scheduled_actions
+export function getPendingActionForRule(db: Db, ruleId: string): ScheduledAction | undefined {
+  return db.prepare(`
+    select * from scheduled_actions
     where rule_id = ? and status = 'pending'
+    order by created_at desc
     limit 1
-  `).get(ruleId);
+  `).get(ruleId) as ScheduledAction | undefined;
+}
 
-  return Boolean(row);
+export function supersedeAction(db: Db, id: string, reason: string): void {
+  db.prepare("update scheduled_actions set status = 'cancelled', skip_reason = ?, executed_at = ? where id = ? and status = 'pending'").run(reason, nowIso(), id);
 }
 
 export function logEvent(db: Db, type: string, message: string, metadata?: unknown): void {

@@ -1,5 +1,5 @@
 import type { Db } from "./db.js";
-import { createScheduledAction, hasPendingActionForRule, logEvent } from "./db.js";
+import { createScheduledAction, getPendingActionForRule, logEvent, supersedeAction } from "./db.js";
 import { parseExpiryTime } from "./expiry.js";
 import type { Rule, ScheduledAction } from "./types.js";
 
@@ -40,12 +40,23 @@ export function evaluateRule(db: Db, rule: Rule, output: string): ScheduledActio
   const matched = findMatch(rule, output);
   if (!matched) return null;
 
-  if (hasPendingActionForRule(db, rule.id)) {
-    return null;
-  }
-
   const now = new Date();
   const expiry = extractExpiry(rule, output, now);
+  const source: "expiry" | "delay" = expiry ? "expiry" : "delay";
+
+  const existing = getPendingActionForRule(db, rule.id);
+  if (existing) {
+    const canUpgrade = existing.schedule_source === "delay" && source === "expiry";
+    if (!canUpgrade) {
+      return null;
+    }
+    supersedeAction(db, existing.id, "superseded by parsed expiry");
+    logEvent(db, "action_superseded", `Replaced fallback action with parsed expiry: ${rule.name}`, {
+      supersededActionId: existing.id,
+      ruleId: rule.id,
+    });
+  }
+
   const minMs = now.getTime() + MIN_SCHEDULE_MS;
   const runAtMs = expiry
     ? Math.max(expiry.parsed.getTime(), minMs)
@@ -63,12 +74,13 @@ export function evaluateRule(db: Db, rule: Rule, output: string): ScheduledActio
     response: rule.response,
     runAt,
     matchedOutput: matched,
+    scheduleSource: source,
   });
   logEvent(db, "action_scheduled", `Scheduled response for rule: ${rule.name}`, {
     actionId: action.id,
     ruleId: rule.id,
     runAt,
-    source: expiry ? "expiry" : "delay",
+    source,
   });
   return action;
 }
