@@ -39,13 +39,6 @@ npm install -g https://github.com/rafsuntaskin/pokecli/releases/download/v0.1.4/
 
 Replace `v0.1.4` and `0.1.4` with the latest release version.
 
-Git-based installs also work, but the release tarball is preferred because it installs the already-built package without npm's git clone and link step:
-
-```bash
-npm install -g github:rafsuntaskin/pokecli
-npm install -g git+ssh://git@github.com/rafsuntaskin/pokecli.git
-```
-
 For local development:
 
 ```bash
