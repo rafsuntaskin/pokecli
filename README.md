@@ -9,7 +9,7 @@ When your agent prints something like `try again at 3:00 PM`, PokeCLI watches th
 ## Install
 
 ```bash
-npm install -g https://github.com/rafsuntaskin/pokecli/releases/download/v0.1.4/pokecli-0.1.4.tgz
+npm install -g https://github.com/rafsuntaskin/pokecli/releases/download/v0.1.5/pokecli-0.1.5.tgz
 ```
 
 ## Quickstart
