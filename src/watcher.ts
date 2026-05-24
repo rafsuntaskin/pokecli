@@ -13,6 +13,7 @@ import {
 import { findMatch, evaluateRule } from "./rules.js";
 import { capturePane, displayMessage, sendKeys, sessionExists, setScheduledPaneTitle } from "./tmux.js";
 import type { ProjectConfig, ScheduledAction } from "./types.js";
+import { extractAgentResponseOutput } from "./pane.js";
 
 export async function runWatcher(projectRoot: string, options: { once?: boolean } = {}): Promise<void> {
   const config = readConfig(projectRoot);
@@ -44,8 +45,9 @@ export async function runWatcher(projectRoot: string, options: { once?: boolean 
         }
         throw error;
       }
+      const agentOutput = extractAgentResponseOutput(config.agent, output);
       for (const rule of listRules(db, true)) {
-        const scheduled = evaluateRule(db, rule, output);
+        const scheduled = evaluateRule(db, rule, agentOutput);
         if (scheduled) {
           const runAt = new Date(scheduled.run_at);
           const summary = `Scheduled '${scheduled.response}' to fire at ${formatLocal(runAt)} (${formatRelative(Date.now(), runAt.getTime())})`;

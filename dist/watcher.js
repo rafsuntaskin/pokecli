@@ -2,6 +2,7 @@ import { readConfig } from "./config.js";
 import { getRule, listActions, listDueActions, listRules, logEvent, markActionExecuted, markActionFailed, markActionSkipped, openDb, } from "./db.js";
 import { findMatch, evaluateRule } from "./rules.js";
 import { capturePane, displayMessage, sendKeys, sessionExists, setScheduledPaneTitle } from "./tmux.js";
+import { extractAgentResponseOutput } from "./pane.js";
 export async function runWatcher(projectRoot, options = {}) {
     const config = readConfig(projectRoot);
     const db = openDb(projectRoot);
@@ -30,8 +31,9 @@ export async function runWatcher(projectRoot, options = {}) {
                 }
                 throw error;
             }
+            const agentOutput = extractAgentResponseOutput(config.agent, output);
             for (const rule of listRules(db, true)) {
-                const scheduled = evaluateRule(db, rule, output);
+                const scheduled = evaluateRule(db, rule, agentOutput);
                 if (scheduled) {
                     const runAt = new Date(scheduled.run_at);
                     const summary = `Scheduled '${scheduled.response}' to fire at ${formatLocal(runAt)} (${formatRelative(Date.now(), runAt.getTime())})`;
