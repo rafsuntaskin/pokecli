@@ -34,10 +34,10 @@ Before sending, it re-checks that the limit prompt is still on screen — so if 
 ## Install
 
 ```bash
-npm install -g https://github.com/rafsuntaskin/pokecli/releases/download/v0.1.3/pokecli-0.1.3.tgz
+npm install -g https://github.com/rafsuntaskin/pokecli/releases/download/v0.1.4/pokecli-0.1.4.tgz
 ```
 
-Replace `v0.1.3` and `0.1.3` with the latest release version.
+Replace `v0.1.4` and `0.1.4` with the latest release version.
 
 Git-based installs also work, but the release tarball is preferred because it installs the already-built package without npm's git clone and link step:
 
