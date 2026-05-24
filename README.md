@@ -91,6 +91,7 @@ poke                       # First-run wizard, or open the project menu
 poke start                 # Start the configured agent in tmux
 poke attach                # Attach to the tmux session
 poke run                   # Run the watcher loop (use in a second terminal)
+poke -m=resume             # Set the auto-resume message for this project
 poke send "continue"       # Manually send text to the session
 poke capture               # Print the last 200 lines of the pane
 poke rules                 # List configured rules

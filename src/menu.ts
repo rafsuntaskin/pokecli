@@ -10,12 +10,12 @@ import {
 import { formatDuration } from "./duration.js";
 import { attachSession, sessionExists, setScheduledPaneTitle, startSession, startWatcherWindow } from "./tmux.js";
 
-export async function runProjectMenu(projectRoot: string): Promise<void> {
+export async function runProjectMenu(projectRoot: string, options: { message?: string } = {}): Promise<void> {
   const config = readConfig(projectRoot);
 
   if (!sessionExists(config)) {
     const { runFirstSetup } = await import("./setup.js");
-    await runFirstSetup(projectRoot);
+    await runFirstSetup(projectRoot, { message: options.message });
     return;
   }
 

@@ -88,6 +88,12 @@ export function getRule(db, id) {
 export function setRuleEnabled(db, id, enabled) {
     db.prepare("update rules set enabled = ? where id = ? or name = ?").run(enabled ? 1 : 0, id, id);
 }
+export function setRuleResponse(db, id, response) {
+    db.prepare("update rules set response = ? where id = ? or name = ?").run(response, id, id);
+}
+export function setPendingActionResponseForRule(db, ruleId, response) {
+    db.prepare("update scheduled_actions set response = ? where rule_id = ? and status = 'pending'").run(response, ruleId);
+}
 export function createScheduledAction(db, input) {
     const action = {
         id: crypto.randomUUID(),

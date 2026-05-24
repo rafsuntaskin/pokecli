@@ -7,6 +7,8 @@ export declare function createRule(db: Db, input: RuleInput): Rule;
 export declare function listRules(db: Db, enabledOnly?: boolean): Rule[];
 export declare function getRule(db: Db, id: string): Rule | undefined;
 export declare function setRuleEnabled(db: Db, id: string, enabled: boolean): void;
+export declare function setRuleResponse(db: Db, id: string, response: string): void;
+export declare function setPendingActionResponseForRule(db: Db, ruleId: string, response: string): void;
 export declare function createScheduledAction(db: Db, input: {
     ruleId: string;
     response: string;

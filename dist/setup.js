@@ -9,7 +9,7 @@ import { askSelect } from "./prompt.js";
 const FALLBACK_DELAY_SECONDS = parseDuration("30m");
 const DEDUPE_SECONDS = parseDuration("90m");
 const DEFAULT_RESPONSE = "continue";
-export async function runFirstSetup(projectRoot) {
+export async function runFirstSetup(projectRoot, options = {}) {
     console.log(`PokeCLI · ${projectRoot}\n`);
     await ensureTmuxAvailable();
     const agent = await askSelect({
@@ -31,7 +31,7 @@ export async function runFirstSetup(projectRoot) {
     ensurePokeDir(projectRoot);
     writeConfig(config);
     const db = openDb(projectRoot);
-    const rule = buildAutoResumeRule(agent);
+    const rule = buildAutoResumeRule(agent, options.message ?? DEFAULT_RESPONSE);
     db.prepare("delete from rules where name = ?").run(rule.name);
     createRule(db, rule);
     logEvent(db, "setup_completed", "Setup completed", { agent, ruleName: rule.name });
@@ -40,10 +40,10 @@ export async function runFirstSetup(projectRoot) {
     console.log(`Started ${config.command} in ${config.tmuxTarget}. Press Ctrl-b d to detach.`);
     attachSession(config);
 }
-function buildAutoResumeRule(agent) {
+function buildAutoResumeRule(agent, response) {
     if (agent === "claude") {
-        return claudeAutoResumeRule(FALLBACK_DELAY_SECONDS, DEFAULT_RESPONSE, DEDUPE_SECONDS);
+        return claudeAutoResumeRule(FALLBACK_DELAY_SECONDS, response, DEDUPE_SECONDS);
     }
-    return codexAutoResumeRule(FALLBACK_DELAY_SECONDS, DEFAULT_RESPONSE, DEDUPE_SECONDS);
+    return codexAutoResumeRule(FALLBACK_DELAY_SECONDS, response, DEDUPE_SECONDS);
 }
 //# sourceMappingURL=setup.js.map

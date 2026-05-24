@@ -28,7 +28,8 @@ const VERSION = readVersion();
 const projectRoot = getProjectRoot();
 async function main() {
     assertSupportedPlatform();
-    const args = process.argv.slice(2);
+    const parsed = parseGlobalArgs(process.argv.slice(2));
+    const args = parsed.args;
     const command = args[0];
     if (command === "-h" || command === "--help" || command === "help") {
         printHelp();
@@ -41,14 +42,20 @@ async function main() {
     const { configExists, readConfig } = await import("./config.js");
     if (!command) {
         if (configExists(projectRoot)) {
+            if (parsed.message) {
+                await updateAutoResumeMessage(parsed.message);
+            }
             const { runProjectMenu } = await import("./menu.js");
-            await runProjectMenu(projectRoot);
+            await runProjectMenu(projectRoot, { message: parsed.message });
         }
         else {
             const { runFirstSetup } = await import("./setup.js");
-            await runFirstSetup(projectRoot);
+            await runFirstSetup(projectRoot, { message: parsed.message });
         }
         return;
+    }
+    if (parsed.message) {
+        await updateAutoResumeMessage(parsed.message);
     }
     if (command === "start") {
         const { startConfiguredSession } = await import("./menu.js");
@@ -126,6 +133,22 @@ async function main() {
     }
     throw new Error(`Unknown command: ${command}`);
 }
+async function updateAutoResumeMessage(message) {
+    const { getRule, logEvent, openDb, setPendingActionResponseForRule, setRuleResponse } = await import("./db.js");
+    const db = openDb(projectRoot);
+    try {
+        const rule = getRule(db, "auto-resume-limit");
+        if (!rule) {
+            throw new Error("No auto-resume rule found. Run `poke` from this project to set it up first.");
+        }
+        setRuleResponse(db, rule.id, message);
+        setPendingActionResponseForRule(db, rule.id, message);
+        logEvent(db, "rule_updated", "Updated auto-resume message", { ruleId: rule.id, response: message });
+    }
+    finally {
+        db.close();
+    }
+}
 async function handleRuleCommand(args) {
     const action = args[0];
     const name = args[1];
@@ -169,12 +192,45 @@ async function handleRuleCommand(args) {
     db.close();
     console.log(`Added rule: ${name}`);
 }
+function parseGlobalArgs(args) {
+    const rest = [];
+    let message;
+    for (let index = 0; index < args.length; index += 1) {
+        const arg = args[index];
+        if (arg === "-m" || arg === "--message") {
+            const next = args[index + 1];
+            if (!next)
+                throw new Error(`${arg} requires a message.`);
+            message = next;
+            index += 1;
+            continue;
+        }
+        if (arg.startsWith("-m=")) {
+            message = arg.slice(3);
+            continue;
+        }
+        if (arg.startsWith("--message=")) {
+            message = arg.slice("--message=".length);
+            continue;
+        }
+        rest.push(arg);
+    }
+    if (message !== undefined && message.trim() === "") {
+        throw new Error("Message cannot be empty.");
+    }
+    return { args: rest, message };
+}
 function parseOptions(args) {
     const options = {};
     for (let index = 0; index < args.length; index += 1) {
         const arg = args[index];
         if (!arg.startsWith("--"))
             continue;
+        const equalIndex = arg.indexOf("=");
+        if (equalIndex > 2) {
+            options[arg.slice(2, equalIndex)] = arg.slice(equalIndex + 1);
+            continue;
+        }
         const key = arg.slice(2);
         const next = args[index + 1];
         if (!next || next.startsWith("--")) {
@@ -212,6 +268,7 @@ Commands:
   resume                          Resume automation
 
 Options:
+  -m, --message <text>             Set the auto-resume message, e.g. -m=resume
   -h, --help                      Show help
   -V, --version                   Show version`);
 }

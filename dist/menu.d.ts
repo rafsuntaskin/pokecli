@@ -1,4 +1,6 @@
-export declare function runProjectMenu(projectRoot: string): Promise<void>;
+export declare function runProjectMenu(projectRoot: string, options?: {
+    message?: string;
+}): Promise<void>;
 export declare function startConfiguredSession(projectRoot: string): Promise<void>;
 export declare function restartWatcher(projectRoot: string): void;
 export declare function printRules(projectRoot: string): void;

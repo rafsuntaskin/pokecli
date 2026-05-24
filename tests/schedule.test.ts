@@ -3,7 +3,7 @@ import { strict as assert } from "node:assert";
 import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { createRule, listActions, listDueActions, markActionExecuted, openDb } from "../src/db.js";
+import { createRule, getRule, listActions, listDueActions, markActionExecuted, openDb, setPendingActionResponseForRule, setRuleResponse } from "../src/db.js";
 import { evaluateRule } from "../src/rules.js";
 
 function withTempProject<T>(fn: (projectRoot: string) => T): T {
@@ -146,6 +146,35 @@ describe("scheduled actions", () => {
         const pending = listActions(db, true);
         assert.equal(pending.length, 1, "only the original action should remain pending");
         assert.equal(pending[0]?.id, first.id);
+      } finally {
+        db.close();
+      }
+    });
+  });
+
+  it("updates the auto-resume rule response and existing pending action response", () => {
+    withTempProject((projectRoot) => {
+      const db = openDb(projectRoot);
+      try {
+        const rule = createRule(db, {
+          name: "auto-resume-limit",
+          matchType: "contains",
+          matchValue: "usage limit",
+          response: "continue",
+          delaySeconds: 0,
+          dedupeSeconds: 600,
+          requireStillVisible: true,
+          enabled: true,
+        });
+
+        const scheduled = evaluateRule(db, rule, "usage limit reached");
+        assert.ok(scheduled, "matching output should schedule an action");
+
+        setRuleResponse(db, rule.id, "resume");
+        setPendingActionResponseForRule(db, rule.id, "resume");
+
+        assert.equal(getRule(db, rule.id)?.response, "resume");
+        assert.equal(listActions(db, true)[0]?.response, "resume");
       } finally {
         db.close();
       }

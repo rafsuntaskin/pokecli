@@ -2,11 +2,11 @@ import { readConfig, updateConfig } from "./config.js";
 import { cancelAction, listActions, listRules, logEvent, openDb, setRuleEnabled, } from "./db.js";
 import { formatDuration } from "./duration.js";
 import { attachSession, sessionExists, setScheduledPaneTitle, startSession, startWatcherWindow } from "./tmux.js";
-export async function runProjectMenu(projectRoot) {
+export async function runProjectMenu(projectRoot, options = {}) {
     const config = readConfig(projectRoot);
     if (!sessionExists(config)) {
         const { runFirstSetup } = await import("./setup.js");
-        await runFirstSetup(projectRoot);
+        await runFirstSetup(projectRoot, { message: options.message });
         return;
     }
     attachSession(config);

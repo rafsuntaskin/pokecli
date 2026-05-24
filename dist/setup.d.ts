@@ -1,1 +1,3 @@
-export declare function runFirstSetup(projectRoot: string): Promise<void>;
+export declare function runFirstSetup(projectRoot: string, options?: {
+    message?: string;
+}): Promise<void>;

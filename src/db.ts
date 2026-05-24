@@ -115,6 +115,14 @@ export function setRuleEnabled(db: Db, id: string, enabled: boolean): void {
   db.prepare("update rules set enabled = ? where id = ? or name = ?").run(enabled ? 1 : 0, id, id);
 }
 
+export function setRuleResponse(db: Db, id: string, response: string): void {
+  db.prepare("update rules set response = ? where id = ? or name = ?").run(response, id, id);
+}
+
+export function setPendingActionResponseForRule(db: Db, ruleId: string, response: string): void {
+  db.prepare("update scheduled_actions set response = ? where rule_id = ? and status = 'pending'").run(response, ruleId);
+}
+
 export function createScheduledAction(
   db: Db,
   input: {
