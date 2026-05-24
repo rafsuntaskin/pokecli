@@ -122,6 +122,7 @@ export function createScheduledAction(
     response: string;
     runAt: string;
     matchedOutput: string;
+    dedupeKey: string;
     scheduleSource: "expiry" | "delay";
   },
 ): ScheduledAction {
@@ -132,7 +133,7 @@ export function createScheduledAction(
     run_at: input.runAt,
     status: "pending",
     matched_output: input.matchedOutput,
-    dedupe_key: "",
+    dedupe_key: input.dedupeKey,
     schedule_source: input.scheduleSource,
     created_at: nowIso(),
     executed_at: null,

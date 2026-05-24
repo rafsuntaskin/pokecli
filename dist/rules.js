@@ -1,5 +1,6 @@
-import { createScheduledAction, hasPendingActionForRule, logEvent } from "./db.js";
+import { createScheduledAction, getPendingActionForRule, logEvent, supersedeAction } from "./db.js";
 import { parseExpiryTime } from "./expiry.js";
+import { createHash } from "node:crypto";
 const MIN_SCHEDULE_MS = 60_000;
 export function findMatch(rule, output) {
     if (rule.match_type === "contains") {
@@ -34,16 +35,32 @@ export function evaluateRule(db, rule, output) {
     const matched = findMatch(rule, output);
     if (!matched)
         return null;
-    if (hasPendingActionForRule(db, rule.id)) {
-        return null;
-    }
     const now = new Date();
     const expiry = extractExpiry(rule, output, now);
+    const source = expiry ? "expiry" : "delay";
     const minMs = now.getTime() + MIN_SCHEDULE_MS;
     const runAtMs = expiry
         ? Math.max(expiry.parsed.getTime(), minMs)
         : Math.max(now.getTime() + rule.delay_seconds * 1000, minMs);
     const runAt = new Date(runAtMs).toISOString();
+    const dedupeKey = scheduleDedupeKey({
+        ruleId: rule.id,
+        matched,
+        source,
+        expiryCaptured: expiry?.captured ?? null,
+        expiryParsed: expiry?.parsed.toISOString() ?? null,
+    });
+    const existing = getPendingActionForRule(db, rule.id);
+    if (existing) {
+        if (existing.dedupe_key === dedupeKey) {
+            return null;
+        }
+        supersedeAction(db, existing.id, "superseded by newer matching output");
+        logEvent(db, "action_superseded", `Replaced pending action for rule: ${rule.name}`, {
+            supersededActionId: existing.id,
+            ruleId: rule.id,
+        });
+    }
     logEvent(db, "rule_matched", `Rule matched: ${rule.name}`, {
         ruleId: rule.id,
         matched,
@@ -55,14 +72,19 @@ export function evaluateRule(db, rule, output) {
         response: rule.response,
         runAt,
         matchedOutput: matched,
+        dedupeKey,
+        scheduleSource: source,
     });
     logEvent(db, "action_scheduled", `Scheduled response for rule: ${rule.name}`, {
         actionId: action.id,
         ruleId: rule.id,
         runAt,
-        source: expiry ? "expiry" : "delay",
+        source,
     });
     return action;
+}
+function scheduleDedupeKey(input) {
+    return createHash("sha256").update(JSON.stringify(input)).digest("hex");
 }
 const CLAUDE_EXPIRY_PATTERN = "(?i)(?:try again|retry|resume|reset(?:s|ting)?)\\s+(?:at\\s+)?(?<time>(?:\\d{1,2}(?::\\d{2})?\\s*(?:am|pm)?)|(?:in\\s+\\d+\\s*(?:minutes?|hours?|mins?|hrs?)))";
 const CODEX_EXPIRY_PATTERN = CLAUDE_EXPIRY_PATTERN;

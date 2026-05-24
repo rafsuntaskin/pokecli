@@ -30,6 +30,7 @@ export type ScheduledAction = {
     status: "pending" | "executed" | "cancelled" | "skipped" | "failed";
     matched_output: string | null;
     dedupe_key: string;
+    schedule_source: "expiry" | "delay";
     created_at: string;
     executed_at: string | null;
     skip_reason: string | null;
