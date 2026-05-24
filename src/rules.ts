@@ -1,5 +1,5 @@
 import type { Db } from "./db.js";
-import { createScheduledAction, getPendingActionForRule, logEvent, supersedeAction } from "./db.js";
+import { createScheduledAction, getPendingActionForRule, getRecentActionByDedupeKey, logEvent, supersedeAction } from "./db.js";
 import { parseExpiryTime } from "./expiry.js";
 import type { Rule, ScheduledAction } from "./types.js";
 import { createHash } from "node:crypto";
@@ -57,6 +57,10 @@ export function evaluateRule(db: Db, rule: Rule, output: string): ScheduledActio
     expiryCaptured: expiry?.captured ?? null,
     expiryParsed: expiry?.parsed.toISOString() ?? null,
   });
+  const recent = getRecentActionByDedupeKey(db, dedupeKey, new Date(now.getTime() - rule.dedupe_seconds * 1000).toISOString());
+  if (recent) {
+    return null;
+  }
 
   const existing = getPendingActionForRule(db, rule.id);
   if (existing) {

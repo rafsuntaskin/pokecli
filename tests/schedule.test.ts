@@ -52,6 +52,39 @@ describe("scheduled actions", () => {
     });
   });
 
+  it("does not schedule the same trigger again after its action executed within the dedupe window", () => {
+    withTempProject((projectRoot) => {
+      const db = openDb(projectRoot);
+      try {
+        const rule = createRule(db, {
+          name: "test-executed-dedupe",
+          matchType: "contains",
+          matchValue: "usage limit",
+          response: "continue",
+          delaySeconds: 0,
+          dedupeSeconds: 600,
+          requireStillVisible: true,
+          enabled: true,
+        });
+
+        const scheduled = evaluateRule(db, rule, "usage limit reached");
+        assert.ok(scheduled, "matching output should schedule an action");
+
+        db.prepare("update scheduled_actions set run_at = ? where id = ?").run(new Date(Date.now() - 1_000).toISOString(), scheduled.id);
+        const dueActions = listDueActions(db);
+        assert.equal(dueActions.length, 1);
+        markActionExecuted(db, dueActions[0]!.id);
+
+        const repeated = evaluateRule(db, rule, "usage limit reached");
+
+        assert.equal(repeated, null, "executed action should suppress the same trigger during the dedupe window");
+        assert.equal(listActions(db, true).length, 0, "same trigger should not create another pending action");
+      } finally {
+        db.close();
+      }
+    });
+  });
+
   it("replaces an existing pending action when a newer matching trigger changes the schedule", () => {
     withTempProject((projectRoot) => {
       const db = openDb(projectRoot);

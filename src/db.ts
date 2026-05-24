@@ -199,6 +199,19 @@ export function getPendingActionForRule(db: Db, ruleId: string): ScheduledAction
   `).get(ruleId) as ScheduledAction | undefined;
 }
 
+export function getRecentActionByDedupeKey(db: Db, dedupeKey: string, sinceIso: string): ScheduledAction | undefined {
+  return db.prepare(`
+    select * from scheduled_actions
+    where dedupe_key = ?
+      and (
+        created_at >= ?
+        or executed_at >= ?
+      )
+    order by coalesce(executed_at, created_at) desc
+    limit 1
+  `).get(dedupeKey, sinceIso, sinceIso) as ScheduledAction | undefined;
+}
+
 export function supersedeAction(db: Db, id: string, reason: string): void {
   db.prepare("update scheduled_actions set status = 'cancelled', skip_reason = ?, executed_at = ? where id = ? and status = 'pending'").run(reason, nowIso(), id);
 }

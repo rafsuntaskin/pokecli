@@ -1,4 +1,4 @@
-import { createScheduledAction, getPendingActionForRule, logEvent, supersedeAction } from "./db.js";
+import { createScheduledAction, getPendingActionForRule, getRecentActionByDedupeKey, logEvent, supersedeAction } from "./db.js";
 import { parseExpiryTime } from "./expiry.js";
 import { createHash } from "node:crypto";
 const MIN_SCHEDULE_MS = 60_000;
@@ -50,6 +50,10 @@ export function evaluateRule(db, rule, output) {
         expiryCaptured: expiry?.captured ?? null,
         expiryParsed: expiry?.parsed.toISOString() ?? null,
     });
+    const recent = getRecentActionByDedupeKey(db, dedupeKey, new Date(now.getTime() - rule.dedupe_seconds * 1000).toISOString());
+    if (recent) {
+        return null;
+    }
     const existing = getPendingActionForRule(db, rule.id);
     if (existing) {
         if (existing.dedupe_key === dedupeKey) {

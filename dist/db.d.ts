@@ -22,5 +22,6 @@ export declare function markActionExecuted(db: Db, id: string): void;
 export declare function markActionSkipped(db: Db, id: string, reason: string): void;
 export declare function markActionFailed(db: Db, id: string, reason: string): void;
 export declare function getPendingActionForRule(db: Db, ruleId: string): ScheduledAction | undefined;
+export declare function getRecentActionByDedupeKey(db: Db, dedupeKey: string, sinceIso: string): ScheduledAction | undefined;
 export declare function supersedeAction(db: Db, id: string, reason: string): void;
 export declare function logEvent(db: Db, type: string, message: string, metadata?: unknown): void;
